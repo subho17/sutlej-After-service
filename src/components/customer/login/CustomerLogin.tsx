@@ -4,6 +4,8 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { SutlejLogo } from "@/components/global";
+import { DEMO_CUSTOMER } from "@/lib/demoCustomer";
+import { API_BASE } from "@/lib/demoStaff";
 
 export function CustomerLogin() {
   const router = useRouter();
@@ -11,6 +13,16 @@ export function CustomerLogin() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  function isDemoMatch(id: string, pw: string): boolean {
+    const v = id.trim();
+    return (
+      (v === DEMO_CUSTOMER.customerId ||
+        v.toLowerCase() === DEMO_CUSTOMER.email ||
+        v === DEMO_CUSTOMER.phone) &&
+      pw === DEMO_CUSTOMER.password
+    );
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,21 +35,32 @@ export function CustomerLogin() {
 
     setLoading(true);
     try {
-      const stored = sessionStorage.getItem("customerUser");
-      if (stored) {
-        const user = JSON.parse(stored);
-        if (
-          user.phone === identifier.trim() ||
-          user.email?.toLowerCase() === identifier.trim().toLowerCase()
-        ) {
-          sessionStorage.setItem("customerName", user.name);
+      // Try backend first; fall back to local demo check if API is down.
+      try {
+        const res = await fetch(`${API_BASE}/api/auth/customer/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ identifier: identifier.trim(), password }),
+        });
+        const data = await res.json().catch(() => null);
+        if (res.ok) {
+          sessionStorage.setItem("customerName", data?.data?.name ?? DEMO_CUSTOMER.name);
           router.push("/customer");
+          return;
+        }
+        if (!isDemoMatch(identifier, password)) {
+          setError(data?.message ?? "Invalid credentials. Please try again.");
+          return;
+        }
+      } catch {
+        // Backend down — allow local demo login so UI is testable.
+        if (!isDemoMatch(identifier, password)) {
+          setError("Unable to reach server. Please try again.");
           return;
         }
       }
 
-      // Default demo login
-      sessionStorage.setItem("customerName", identifier.trim());
+      sessionStorage.setItem("customerName", DEMO_CUSTOMER.name);
       router.push("/customer");
     } catch {
       setError("An unexpected error occurred. Please try again.");

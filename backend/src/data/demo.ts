@@ -11,3 +11,12 @@ export const DEMO_STAFF = {
   // Demo password (plain text for demo; stored as-is in passwordHash field)
   password: "Staff@123",
 } as const;
+
+export const DEMO_CUSTOMER = {
+  name: "Demo Customer",
+  customerId: "CUST001",
+  email: "customer@sutlej.com",
+  phone: "9876501234",
+  // Demo password (plain text for demo; stored as-is in passwordHash field)
+  password: "Customer@123",
+} as const;
