@@ -3,6 +3,9 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --sutlej-blue: #008cee;
+  --sutlej-cyan: #38bdf8;
+  --sutlej-dark: #1e232e;
 }
 
 @theme inline {
@@ -12,15 +15,77 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  overflow-x: hidden;
+}
+
+/* Dedicated Sutlej Centered Logo Animations */
+@keyframes logoEntry {
+  0% {
+    opacity: 0;
+    transform: scale(0.85) translateY(8px);
+    filter: blur(4px);
+  }
+  65% {
+    opacity: 1;
+    transform: scale(1.02) translateY(0);
+    filter: blur(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes logoPulseGlow {
+  0%, 100% {
+    filter: drop-shadow(0 4px 16px rgba(0, 140, 238, 0.25));
+    transform: scale(1);
+  }
+  50% {
+    filter: drop-shadow(0 8px 30px rgba(0, 140, 238, 0.5));
+    transform: scale(1.03);
+  }
+}
+
+@keyframes logoLoadingBar {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes sutlejShimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-logo-entry {
+  animation: logoEntry 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-logo-pulse {
+  animation: logoPulseGlow 2.4s ease-in-out infinite;
+}
+
+.animate-logo-loading-bar {
+  animation: logoLoadingBar 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.animate-sutlej-shimmer {
+  background-size: 200% auto;
+  animation: sutlejShimmer 2.8s linear infinite;
 }

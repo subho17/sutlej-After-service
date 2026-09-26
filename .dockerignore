@@ -1,0 +1,21 @@
+# dependencies
+node_modules
+npm-debug.log*
+
+# next.js
+.next
+out
+build
+
+# misc
+.git
+.gitignore
+README.md
+.next
+.vercel
+.env*.local
+
+# docker
+Dockerfile
+.dockerignore
+docker-compose*.yml

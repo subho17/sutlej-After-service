@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 170" width="100%" height="100%">
+  <defs>
+    <linearGradient id="sutlejBlueDark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38BDF8" />
+      <stop offset="100%" stop-color="#0284C7" />
+    </linearGradient>
+    <filter id="glowDark" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="4" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Circular Emblem Badge -->
+  <g transform="translate(260, 48)">
+    <!-- Outer Glow Ring -->
+    <circle cx="0" cy="0" r="39" fill="none" stroke="url(#sutlejBlueDark)" stroke-width="2.5" opacity="0.95" />
+    <!-- Inner Disc -->
+    <circle cx="0" cy="0" r="33.5" fill="url(#sutlejBlueDark)" />
+    
+    <!-- Dynamic White S Wave / Ribbon -->
+    <path d="M 3.8 -33.5
+             C 4.2 -33.5, 0.5 -22, -9.2 -14
+             C -17.5 -7.2, -15 6, -3 15
+             C 4.5 21, 6.2 27, -3.8 33.5
+             C -4.2 33.5, -0.5 22, 9.2 14
+             C 17.5 7.2, 15 -6, 3 -15
+             C -4.5 -21, -6.2 -27, 3.8 -33.5 Z"
+          fill="#FFFFFF" />
+  </g>
+
+  <!-- Sutlej Automotives Typography -->
+  <g transform="translate(260, 134)" text-anchor="middle">
+    <text font-family="'Orbitron', 'Rajdhani', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" 
+          font-weight="900" 
+          font-size="28" 
+          letter-spacing="5">
+      <tspan fill="#38BDF8" x="-95">SUTLEJ</tspan>
+      <tspan fill="#F1F5F9" x="55">AUTOMOTIVES</tspan>
+    </text>
+  </g>
+</svg>
