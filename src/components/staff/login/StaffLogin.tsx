@@ -129,7 +129,7 @@ export function StaffLogin() {
               )}
 
               <div className="flex justify-end">
-                <Link href="#" className="text-sm text-gray-600 hover:text-[#6366F1] font-medium transition-colors">
+                <Link href="/customer/forgot-password" className="text-sm text-gray-600 hover:text-[#6366F1] font-medium transition-colors">
                   Forgot Password?
                 </Link>
               </div>

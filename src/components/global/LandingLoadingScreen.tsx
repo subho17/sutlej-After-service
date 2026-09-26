@@ -34,13 +34,10 @@ export function LandingLoadingScreen({
   size = "hero",
   useImage = false,
 }: LandingLoadingScreenProps) {
-  const [mounted, setMounted] = useState<boolean>(false);
   const [isExiting, setIsExiting] = useState<boolean>(false);
   const [isFinished, setIsFinished] = useState<boolean>(false);
 
   useEffect(() => {
-    setMounted(true);
-
     // Trigger exit transition before unmount
     const exitTimer = setTimeout(() => {
       setIsExiting(true);
@@ -58,7 +55,7 @@ export function LandingLoadingScreen({
     };
   }, [duration, onComplete]);
 
-  if (!mounted || isFinished) {
+  if (isFinished) {
     return null;
   }
 

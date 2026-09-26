@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Backend is a separate package with its own tsc check:
+    "backend/**",
+    "node_modules/**",
   ]),
 ]);
 

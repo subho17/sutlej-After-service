@@ -2,7 +2,6 @@
 
 import React from "react";
 import Link from "next/link";
-import { SutlejLogo } from "./SutlejLogo";
 import { CookieConsent } from "./CookieConsent";
 
 export function RoleSelector() {
@@ -50,7 +49,7 @@ export function RoleSelector() {
             Customer portal
           </h3>
           <p className="text-sm text-gray-500 leading-relaxed font-medium">
-            Raise complaints, order spares, track every vehicle's service schedule, and see offers.
+            Raise complaints, order spares, track every vehicle&apos;s service schedule, and see offers.
           </p>
         </Link>
       </div>
