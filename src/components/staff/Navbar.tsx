@@ -10,7 +10,7 @@ export interface NavItem {
 }
 
 export const STAFF_NAV_ITEMS: NavItem[] = [
-  { label: "Dashboard", href: "/staff" },
+  { label: "Dashboard", href: "/staff/dashboard" },
   { label: "New Complaint", href: "/staff/complaints/new" },
   { label: "All Complaints", href: "/staff/complaints" },
   { label: "Spares Inventory", href: "/staff/inventory" },
@@ -41,10 +41,16 @@ export function StaffNavbar({
     if (currentTab) {
       return currentTab.toLowerCase() === item.label.toLowerCase();
     }
-    if (item.href === "/staff") {
+    if (item.href === "/staff" || item.href === "/staff/dashboard") {
       return pathname === "/staff" || pathname === "/staff/dashboard";
     }
-    return pathname.startsWith(item.href);
+    if (item.href === "/staff/complaints") {
+      return pathname === "/staff/complaints";
+    }
+    if (item.href === "/staff/complaints/new") {
+      return pathname === "/staff/complaints/new";
+    }
+    return pathname === item.href || pathname.startsWith(item.href + "/");
   };
 
   return (

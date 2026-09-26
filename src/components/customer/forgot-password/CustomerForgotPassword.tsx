@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { SutlejLogo } from "@/components/global";
+import { API_BASE } from "@/lib/demoStaff";
 
 export function CustomerForgotPassword() {
   const router = useRouter();
@@ -15,7 +16,7 @@ export function CustomerForgotPassword() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleRequestOtp = (e: React.FormEvent) => {
+  const handleRequestOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
@@ -25,14 +26,26 @@ export function CustomerForgotPassword() {
     }
 
     setLoading(true);
-    // Simulate sending OTP / link
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/customer/forgot-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ identifier: identifier.trim() }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        setError(data?.message ?? "Could not send reset code. Please try again.");
+        return;
+      }
       setStep("verify");
-    }, 800);
+    } catch {
+      setError("Unable to reach server. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleResetPassword = (e: React.FormEvent) => {
+  const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
@@ -50,11 +63,27 @@ export function CustomerForgotPassword() {
     }
 
     setLoading(true);
-    // Simulate password update
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/customer/reset-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          identifier: identifier.trim(),
+          otp: otp.trim(),
+          newPassword,
+        }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        setError(data?.message ?? "Could not reset password. Please try again.");
+        return;
+      }
       setStep("success");
-    }, 900);
+    } catch {
+      setError("Unable to reach server. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

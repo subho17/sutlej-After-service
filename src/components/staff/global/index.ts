@@ -1,0 +1,16 @@
+export * from "./StaffDashboard";
+export * from "./StatCard";
+export * from "./EmptyStateCard";
+export * from "./RegisterComplaint";
+export * from "./AllComplaints";
+export * from "./SparesInventory";
+export * from "./SparePartOrders";
+export * from "./Announcements";
+export * from "./CustomSelect";
+export { default as StaffDashboard } from "./StaffDashboard";
+export { default as RegisterComplaint } from "./RegisterComplaint";
+export { default as AllComplaints } from "./AllComplaints";
+export { default as SparesInventory } from "./SparesInventory";
+export { default as SparePartOrders } from "./SparePartOrders";
+export { default as Announcements } from "./Announcements";
+export { default as CustomSelect } from "./CustomSelect";
