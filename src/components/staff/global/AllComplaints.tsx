@@ -67,27 +67,27 @@ export function AllComplaints() {
         {/* Filter / Search Bar Row */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
           {/* Search Input */}
-          <div className="flex-1 relative">
+          <div className="flex-1 min-w-[220px]">
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search by name, phone, vehicle no. or ID..."
-              className="w-full px-3.5 py-2 rounded-md border border-slate-200 bg-white text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#6366F1] focus:ring-1 focus:ring-[#6366F1] transition-all shadow-sm"
+              className="w-full px-3.5 py-2 rounded-lg border border-slate-200/90 bg-white text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#E8A33D] focus:ring-2 focus:ring-[#E8A33D]/25 transition-all shadow-xs"
             />
           </div>
 
           {/* Modern Status Filter Dropdown */}
-          <div className="shrink-0 w-full sm:w-44">
+          <div className="w-full sm:w-44 shrink-0">
             <CustomSelect
               value={statusFilter}
               onChange={setStatusFilter}
               options={[
                 { value: "all", label: "All statuses" },
-                { value: "open", label: "Open", dotColor: "bg-amber-500" },
-                { value: "in-progress", label: "In progress", dotColor: "bg-sky-500" },
-                { value: "resolved", label: "Resolved", dotColor: "bg-emerald-500" },
-                { value: "closed", label: "Closed", dotColor: "bg-slate-400" },
+                { value: "open", label: "Open", dotColor: "amber" },
+                { value: "in-progress", label: "In progress", dotColor: "sky" },
+                { value: "resolved", label: "Resolved", dotColor: "emerald" },
+                { value: "closed", label: "Closed", dotColor: "slate" },
               ]}
               size="md"
               className="w-full"
@@ -95,7 +95,7 @@ export function AllComplaints() {
           </div>
 
           {/* Modern Category Filter Dropdown */}
-          <div className="shrink-0 w-full sm:w-56">
+          <div className="w-full sm:w-56 shrink-0">
             <CustomSelect
               value={categoryFilter}
               onChange={setCategoryFilter}

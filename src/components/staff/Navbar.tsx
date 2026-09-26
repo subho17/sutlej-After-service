@@ -7,15 +7,115 @@ import { usePathname } from "next/navigation";
 export interface NavItem {
   label: string;
   href: string;
+  icon: (active: boolean) => React.ReactNode;
 }
 
 export const STAFF_NAV_ITEMS: NavItem[] = [
-  { label: "Dashboard", href: "/staff/dashboard" },
-  { label: "New Complaint", href: "/staff/complaints/new" },
-  { label: "All Complaints", href: "/staff/complaints" },
-  { label: "Spares Inventory", href: "/staff/inventory" },
-  { label: "Orders", href: "/staff/orders" },
-  { label: "Announcements", href: "/staff/announcements" },
+  {
+    label: "Dashboard",
+    href: "/staff/dashboard",
+    icon: (active: boolean) => (
+      <svg
+        className={`w-3.5 h-3.5 transition-transform duration-200 group-hover:scale-110 ${
+          active ? "text-[#1A1308]" : "text-slate-400 group-hover:text-[#E8A33D]"
+        }`}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      >
+        <rect x="3" y="3" width="7" height="7" rx="1.5" />
+        <rect x="14" y="3" width="7" height="7" rx="1.5" />
+        <rect x="14" y="14" width="7" height="7" rx="1.5" />
+        <rect x="3" y="14" width="7" height="7" rx="1.5" />
+      </svg>
+    ),
+  },
+  {
+    label: "New Complaint",
+    href: "/staff/complaints/new",
+    icon: (active: boolean) => (
+      <svg
+        className={`w-3.5 h-3.5 transition-transform duration-200 group-hover:scale-110 ${
+          active ? "text-[#1A1308]" : "text-slate-400 group-hover:text-[#E8A33D]"
+        }`}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      >
+        <path d="M12 4v16m8-8H4" />
+      </svg>
+    ),
+  },
+  {
+    label: "All Complaints",
+    href: "/staff/complaints",
+    icon: (active: boolean) => (
+      <svg
+        className={`w-3.5 h-3.5 transition-transform duration-200 group-hover:scale-110 ${
+          active ? "text-[#1A1308]" : "text-slate-400 group-hover:text-[#E8A33D]"
+        }`}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      >
+        <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+      </svg>
+    ),
+  },
+  {
+    label: "Spares Inventory",
+    href: "/staff/inventory",
+    icon: (active: boolean) => (
+      <svg
+        className={`w-3.5 h-3.5 transition-transform duration-200 group-hover:scale-110 ${
+          active ? "text-[#1A1308]" : "text-slate-400 group-hover:text-[#E8A33D]"
+        }`}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      >
+        <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+      </svg>
+    ),
+  },
+  {
+    label: "Orders",
+    href: "/staff/orders",
+    icon: (active: boolean) => (
+      <svg
+        className={`w-3.5 h-3.5 transition-transform duration-200 group-hover:scale-110 ${
+          active ? "text-[#1A1308]" : "text-slate-400 group-hover:text-[#E8A33D]"
+        }`}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      >
+        <path d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+      </svg>
+    ),
+  },
+  {
+    label: "Announcements",
+    href: "/staff/announcements",
+    icon: (active: boolean) => (
+      <svg
+        className={`w-3.5 h-3.5 transition-transform duration-200 group-hover:scale-110 ${
+          active ? "text-[#1A1308]" : "text-slate-400 group-hover:text-[#E8A33D]"
+        }`}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      >
+        <path d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 8a3 3 0 010 6M11 5.882l5.068-3.04A1.76 1.76 0 0119 4.354V17.65a1.76 1.76 0 01-2.932 1.512L11 16.118M5 13H3a1 1 0 01-1-1v-2a1 1 0 011-1h2" />
+      </svg>
+    ),
+  },
 ];
 
 export interface StaffNavbarProps {
@@ -24,11 +124,6 @@ export interface StaffNavbarProps {
   onLogout?: () => void;
 }
 
-/**
- * Staff Navbar Component
- * Features the official Sutlej circular emblem, brand typography,
- * high-contrast pill navigation, and staff session actions.
- */
 export function StaffNavbar({
   currentTab,
   staffName = "Staff",
@@ -54,18 +149,21 @@ export function StaffNavbar({
   };
 
   return (
-    <nav className="w-full bg-[#181D24] border-b border-slate-800/80 sticky top-0 z-50 select-none shadow-md">
+    <nav className="relative w-full bg-[#0E131B]/95 backdrop-blur-xl border-b border-slate-800/80 sticky top-0 z-50 select-none shadow-[0_4px_24px_rgba(0,0,0,0.35)] transition-all">
+      {/* Top Ambient Glow Line */}
+      <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-[#E8A33D]/40 to-transparent pointer-events-none" />
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-        {/* Left: Brand Identity with Official Sutlej Logo */}
+        {/* Left: Brand Identity with Official Animated Sutlej Logo */}
         <Link
           href="/staff"
           className="flex items-center gap-3 group focus:outline-none shrink-0"
         >
-          {/* Circular Sutlej Emblem Badge */}
-          <div className="relative w-9 h-9 flex items-center justify-center shrink-0">
+          {/* Circular Sutlej Emblem Badge with Hover Glow */}
+          <div className="relative w-9 h-9 flex items-center justify-center shrink-0 group-hover:scale-105 group-hover:rotate-6 transition-all duration-300 drop-shadow-[0_2px_10px_rgba(0,140,238,0.45)]">
             <svg
               viewBox="0 0 100 100"
-              className="w-full h-full drop-shadow-[0_2px_8px_rgba(0,140,238,0.4)]"
+              className="w-full h-full"
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
             >
@@ -88,7 +186,7 @@ export function StaffNavbar({
                 r="46"
                 stroke="url(#staffSutlejRing)"
                 strokeWidth="3"
-                className="opacity-90"
+                className="opacity-90 group-hover:opacity-100 transition-opacity"
               />
 
               {/* Inner Disc */}
@@ -124,72 +222,125 @@ export function StaffNavbar({
             >
               SUTLEJ AUTOMOTIVES
             </span>
-            <span className="text-[11px] font-medium text-slate-400 leading-tight">
-              Staff Service Desk
-            </span>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              {/* Online Pulse Indicator */}
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+              </span>
+              <span className="text-[11px] font-medium text-slate-400 leading-tight group-hover:text-slate-300 transition-colors">
+                Staff Service Desk
+              </span>
+            </div>
           </div>
         </Link>
 
-        {/* Center: Desktop Navigation Bar with Rounded Pill Container */}
-        <div className="hidden xl:flex items-center bg-[#13171D] border border-slate-800/80 rounded-lg p-1 shadow-inner">
+        {/* Center: Desktop Navigation Bar with Modern Glassmorphic Container & Hover Effects */}
+        <div className="hidden xl:flex items-center bg-[#131822]/90 border border-slate-800/80 rounded-xl p-1 shadow-[inset_0_1px_3px_rgba(0,0,0,0.5)] gap-1">
           {STAFF_NAV_ITEMS.map((item) => {
             const active = isActive(item);
             return (
               <Link
                 key={item.label}
                 href={item.href}
-                className={`px-3.5 py-1.5 rounded-md text-xs font-semibold tracking-wide transition-all duration-200 whitespace-nowrap ${
+                className={`relative group flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition-all duration-200 whitespace-nowrap overflow-hidden ${
                   active
-                    ? "bg-[#E8A33D] text-[#1A1308] shadow-[0_1px_3px_rgba(0,0,0,0.3)] font-bold"
-                    : "text-slate-300 hover:text-white hover:bg-slate-800/60"
+                    ? "bg-gradient-to-r from-[#E8A33D] to-[#F5B453] text-[#1A1308] font-bold shadow-[0_2px_12px_rgba(232,163,61,0.35)] scale-[1.02]"
+                    : "text-slate-300 hover:text-white hover:bg-white/[0.08] hover:-translate-y-0.5 active:translate-y-0"
                 }`}
               >
-                {item.label}
+                {/* Micro Icon */}
+                {item.icon(active)}
+
+                {/* Label */}
+                <span>{item.label}</span>
+
+                {/* Animated Bottom Glow Underline on Inactive Hover */}
+                {!active && (
+                  <span className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[2px] w-0 bg-gradient-to-r from-transparent via-[#E8A33D] to-transparent group-hover:w-4/5 transition-all duration-300 rounded-full" />
+                )}
               </Link>
             );
           })}
         </div>
 
-        {/* Medium Screens Navigation Bar (scrollable horizontally if needed) */}
-        <div className="hidden md:flex xl:hidden items-center bg-[#13171D] border border-slate-800/80 rounded-lg p-1 overflow-x-auto max-w-[500px]">
+        {/* Medium Screens Navigation Bar */}
+        <div className="hidden md:flex xl:hidden items-center bg-[#131822]/90 border border-slate-800/80 rounded-xl p-1 overflow-x-auto max-w-[500px] gap-1 shadow-inner">
           {STAFF_NAV_ITEMS.map((item) => {
             const active = isActive(item);
             return (
               <Link
                 key={item.label}
                 href={item.href}
-                className={`px-2.5 py-1.5 rounded-md text-[11px] font-semibold tracking-wide transition-all duration-200 whitespace-nowrap ${
+                className={`relative group flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold tracking-wide transition-all duration-200 whitespace-nowrap overflow-hidden ${
                   active
-                    ? "bg-[#E8A33D] text-[#1A1308] font-bold shadow-[0_1px_3px_rgba(0,0,0,0.3)]"
-                    : "text-slate-300 hover:text-white hover:bg-slate-800/60"
+                    ? "bg-gradient-to-r from-[#E8A33D] to-[#F5B453] text-[#1A1308] font-bold shadow-[0_2px_10px_rgba(232,163,61,0.35)]"
+                    : "text-slate-300 hover:text-white hover:bg-white/[0.08] hover:-translate-y-0.5"
                 }`}
               >
-                {item.label}
+                {item.icon(active)}
+                <span>{item.label}</span>
+                {!active && (
+                  <span className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[2px] w-0 bg-gradient-to-r from-transparent via-[#E8A33D] to-transparent group-hover:w-4/5 transition-all duration-300 rounded-full" />
+                )}
               </Link>
             );
           })}
         </div>
 
-        {/* Right: Staff Identity & Log Out Action */}
+        {/* Right: Staff Identity & Modern Glassmorphic Log Out Button */}
         <div className="flex items-center gap-3 shrink-0">
-          <span className="text-xs text-slate-400 font-medium hidden sm:inline-block">
-            {staffName}
-          </span>
+          {/* User Profile Pill */}
+          <div className="hidden sm:flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] px-2.5 py-1 rounded-full shadow-inner">
+            <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center text-[10px] font-bold text-white shadow-xs">
+              {staffName.charAt(0).toUpperCase()}
+            </div>
+            <span className="text-xs text-slate-300 font-medium">
+              {staffName}
+            </span>
+          </div>
 
+          {/* Modern Log Out Button with Sliding Arrow Hover */}
           {onLogout ? (
             <button
               onClick={onLogout}
               type="button"
-              className="text-xs font-semibold text-slate-200 hover:text-white px-3.5 py-1.5 rounded-md border border-slate-700/80 hover:border-slate-500 bg-[#1D232C] hover:bg-[#252C37] transition-all duration-200 cursor-pointer shadow-sm"
+              className="group flex items-center gap-1.5 text-xs font-semibold text-slate-200 hover:text-rose-200 px-3.5 py-1.5 rounded-lg border border-white/10 hover:border-rose-500/40 bg-white/[0.04] hover:bg-rose-500/15 transition-all duration-200 cursor-pointer shadow-sm hover:shadow-[0_0_14px_rgba(244,63,94,0.25)] hover:-translate-y-0.5 active:translate-y-0"
             >
-              Log out
+              <span>Log out</span>
+              <svg
+                className="w-3.5 h-3.5 text-slate-400 group-hover:text-rose-300 group-hover:translate-x-0.5 transition-transform duration-200"
+                viewBox="0 0 20 20"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                />
+              </svg>
             </button>
           ) : (
             <Link
               href="/"
-              className="text-xs font-semibold text-slate-200 hover:text-white px-3.5 py-1.5 rounded-md border border-slate-700/80 hover:border-slate-500 bg-[#1D232C] hover:bg-[#252C37] transition-all duration-200 shadow-sm"
+              className="group flex items-center gap-1.5 text-xs font-semibold text-slate-200 hover:text-rose-200 px-3.5 py-1.5 rounded-lg border border-white/10 hover:border-rose-500/40 bg-white/[0.04] hover:bg-rose-500/15 transition-all duration-200 shadow-sm hover:shadow-[0_0_14px_rgba(244,63,94,0.25)] hover:-translate-y-0.5 active:translate-y-0"
             >
-              Log out
+              <span>Log out</span>
+              <svg
+                className="w-3.5 h-3.5 text-slate-400 group-hover:text-rose-300 group-hover:translate-x-0.5 transition-transform duration-200"
+                viewBox="0 0 20 20"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                />
+              </svg>
             </Link>
           )}
 
@@ -197,11 +348,11 @@ export function StaffNavbar({
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             type="button"
-            className="md:hidden text-slate-300 hover:text-white p-1.5 rounded-md hover:bg-slate-800/60"
+            className="md:hidden text-slate-300 hover:text-white p-1.5 rounded-lg hover:bg-white/[0.08] transition-colors"
             aria-label="Toggle navigation menu"
           >
             <svg
-              className="w-5 h-5"
+              className="w-5 h-5 transition-transform duration-200"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -226,9 +377,9 @@ export function StaffNavbar({
         </div>
       </div>
 
-      {/* Mobile Dropdown Navigation */}
+      {/* Mobile Animated Dropdown Navigation */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-slate-800 bg-[#14181F] px-4 py-3 space-y-1 animate-in fade-in duration-200">
+        <div className="md:hidden border-t border-slate-800 bg-[#0E131B]/98 backdrop-blur-xl px-4 py-3 space-y-1.5 animate-in fade-in slide-in-from-top-2 duration-200">
           {STAFF_NAV_ITEMS.map((item) => {
             const active = isActive(item);
             return (
@@ -236,13 +387,14 @@ export function StaffNavbar({
                 key={item.label}
                 href={item.href}
                 onClick={() => setMobileMenuOpen(false)}
-                className={`block px-3 py-2 rounded-md text-xs font-semibold transition-colors ${
+                className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
                   active
-                    ? "bg-[#E8A33D] text-[#1A1308] font-bold"
-                    : "text-slate-300 hover:text-white hover:bg-slate-800/60"
+                    ? "bg-gradient-to-r from-[#E8A33D] to-[#F5B453] text-[#1A1308] font-bold shadow-md"
+                    : "text-slate-300 hover:text-white hover:bg-white/[0.08]"
                 }`}
               >
-                {item.label}
+                {item.icon(active)}
+                <span>{item.label}</span>
               </Link>
             );
           })}

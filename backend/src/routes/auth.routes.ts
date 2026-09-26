@@ -9,7 +9,7 @@ const router = Router();
 router.post("/staff/login", asyncHandler(authController.staffLogin));
 router.post("/customer/login", asyncHandler(authController.customerLogin));
 
-// Customer-only password recovery via Gmail OTP (no staff equivalent)
+// Customer-only password recovery via Gmail OTP (code goes to customer's email)
 router.post(
   "/customer/forgot-password",
   asyncHandler(passwordResetController.requestCustomerPasswordReset)
@@ -17,6 +17,17 @@ router.post(
 router.post(
   "/customer/reset-password",
   asyncHandler(passwordResetController.resetCustomerPassword)
+);
+
+// Staff password recovery — OTP goes to the fixed admin inbox,
+// never to the staff member's own email
+router.post(
+  "/staff/forgot-password",
+  asyncHandler(passwordResetController.requestStaffPasswordReset)
+);
+router.post(
+  "/staff/reset-password",
+  asyncHandler(passwordResetController.resetStaffPassword)
 );
 
 export default router;

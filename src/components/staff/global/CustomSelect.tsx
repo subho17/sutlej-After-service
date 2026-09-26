@@ -5,7 +5,7 @@ import React, { useState, useRef, useEffect } from "react";
 export interface SelectOption {
   value: string;
   label: string;
-  dotColor?: string;
+  dotColor?: string; // e.g. "amber", "emerald", "sky", "purple", "rose", or hex "#10B981"
   badge?: string;
   description?: string;
 }
@@ -24,6 +24,21 @@ export interface CustomSelectProps {
   size?: "sm" | "md" | "lg";
   align?: "left" | "right";
 }
+
+// Pre-defined static color classes to guarantee Tailwind v4 compiles them
+const COLOR_MAP: Record<string, string> = {
+  amber: "bg-amber-500 ring-amber-500/20",
+  yellow: "bg-amber-500 ring-amber-500/20",
+  sky: "bg-sky-500 ring-sky-500/20",
+  blue: "bg-blue-500 ring-blue-500/20",
+  purple: "bg-purple-500 ring-purple-500/20",
+  emerald: "bg-emerald-500 ring-emerald-500/20",
+  green: "bg-emerald-500 ring-emerald-500/20",
+  rose: "bg-rose-500 ring-rose-500/20",
+  red: "bg-rose-500 ring-rose-500/20",
+  slate: "bg-slate-400 ring-slate-400/20",
+  gray: "bg-gray-400 ring-gray-400/20",
+};
 
 export function CustomSelect({
   value,
@@ -93,12 +108,34 @@ export function CustomSelect({
     setIsOpen(false);
   };
 
+  // Helper to render dot indicator
+  const renderDot = (dotColor?: string) => {
+    if (!dotColor) return null;
+    const cleanKey = dotColor.replace("bg-", "").replace("-500", "").toLowerCase();
+    const mappedClass = COLOR_MAP[cleanKey];
+
+    if (mappedClass) {
+      return (
+        <span
+          className={`w-2 h-2 rounded-full ring-2 shrink-0 ${mappedClass}`}
+        />
+      );
+    }
+
+    return (
+      <span
+        className="w-2 h-2 rounded-full ring-2 ring-black/10 shrink-0"
+        style={{ backgroundColor: dotColor }}
+      />
+    );
+  };
+
   return (
     <div
       ref={dropdownRef}
-      className={`relative inline-block text-left select-none ${className}`}
+      className={`relative text-left select-none ${className}`}
     >
-      {/* Hidden native input for form compatibility */}
+      {/* Hidden native input for standard form POST compatibility */}
       {name && (
         <input
           type="hidden"
@@ -108,40 +145,36 @@ export function CustomSelect({
         />
       )}
 
-      {/* Trigger Button */}
+      {/* Modern Trigger Button */}
       <button
         type="button"
         disabled={disabled}
         onClick={() => !disabled && setIsOpen(!isOpen)}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
-        className={`w-full group flex items-center justify-between gap-2.5 bg-white border border-slate-200/90 text-slate-800 shadow-xs hover:border-slate-300 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${sizeClasses[size]} ${
-          isOpen ? "border-indigo-500 ring-2 ring-indigo-500/20" : ""
+        className={`w-full group flex items-center justify-between gap-2.5 bg-white border border-slate-200/90 text-slate-800 shadow-xs hover:border-slate-300 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-[#E8A33D]/25 focus:border-[#E8A33D] transition-all duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${sizeClasses[size]} ${
+          isOpen ? "border-[#E8A33D] ring-2 ring-[#E8A33D]/25" : ""
         } ${buttonClassName}`}
       >
         <div className="flex items-center gap-2 truncate">
-          {selectedOption?.dotColor && (
-            <span
-              className={`w-2 h-2 rounded-full shrink-0 ${selectedOption.dotColor}`}
-            />
-          )}
+          {renderDot(selectedOption?.dotColor)}
           <span className="truncate font-medium text-slate-800">
             {selectedOption ? selectedOption.label : placeholder}
           </span>
         </div>
 
-        {/* Animated Modern Chevron */}
+        {/* Crisp Chevron with Smooth Rotation */}
         <div
           className={`shrink-0 text-slate-400 group-hover:text-slate-600 transition-transform duration-200 ${
-            isOpen ? "rotate-180 text-indigo-600" : ""
+            isOpen ? "rotate-180 text-[#E8A33D]" : ""
           }`}
         >
           <svg
-            className="w-4 h-4"
+            className="w-3.5 h-3.5"
             viewBox="0 0 20 20"
             fill="none"
             stroke="currentColor"
-            strokeWidth="1.75"
+            strokeWidth="2"
           >
             <path
               strokeLinecap="round"
@@ -152,11 +185,11 @@ export function CustomSelect({
         </div>
       </button>
 
-      {/* Animated Dropdown Menu */}
+      {/* Floating Animated Dropdown Menu */}
       {isOpen && (
         <div
           role="listbox"
-          className={`absolute z-50 mt-1.5 w-full min-w-[170px] bg-white rounded-xl border border-slate-200/90 shadow-xl p-1.5 backdrop-blur-md overflow-hidden max-h-64 overflow-y-auto animate-in fade-in zoom-in-95 duration-150 ${
+          className={`absolute z-50 mt-1.5 w-full min-w-[180px] bg-white rounded-xl border border-slate-200 shadow-xl p-1.5 backdrop-blur-md overflow-hidden max-h-64 overflow-y-auto animate-in fade-in zoom-in-95 duration-150 ${
             align === "right" ? "right-0" : "left-0"
           } ${menuClassName}`}
         >
@@ -170,16 +203,12 @@ export function CustomSelect({
                 onClick={() => handleSelect(opt.value)}
                 className={`group flex items-center justify-between px-3 py-2 text-xs sm:text-sm rounded-lg cursor-pointer transition-all duration-100 ${
                   isSelected
-                    ? "bg-indigo-50/80 text-indigo-950 font-semibold"
+                    ? "bg-[#FFF8EE] text-[#8C5209] font-semibold"
                     : "text-slate-700 hover:bg-slate-50 hover:text-slate-900"
                 }`}
               >
                 <div className="flex items-center gap-2.5 truncate flex-1 mr-2">
-                  {opt.dotColor && (
-                    <span
-                      className={`w-2 h-2 rounded-full shrink-0 ${opt.dotColor}`}
-                    />
-                  )}
+                  {renderDot(opt.dotColor)}
                   <div className="truncate">
                     <div className="truncate">{opt.label}</div>
                     {opt.description && (
@@ -190,9 +219,9 @@ export function CustomSelect({
                   </div>
                 </div>
 
-                {/* Active Checkmark */}
+                {/* Active Checkmark in Sutlej Brand Accent */}
                 {isSelected && (
-                  <span className="shrink-0 text-indigo-600">
+                  <span className="shrink-0 text-[#E8A33D]">
                     <svg
                       className="w-4 h-4"
                       viewBox="0 0 20 20"

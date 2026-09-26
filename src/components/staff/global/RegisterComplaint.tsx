@@ -284,10 +284,10 @@ export function RegisterComplaint() {
                     setFormData((prev) => ({ ...prev, priority: val }))
                   }
                   options={[
-                    { value: "Low", label: "Low", dotColor: "bg-emerald-500" },
-                    { value: "Medium", label: "Medium", dotColor: "bg-amber-500" },
-                    { value: "High", label: "High", dotColor: "bg-orange-500" },
-                    { value: "Urgent", label: "Urgent", dotColor: "bg-rose-500" },
+                    { value: "Low", label: "Low", dotColor: "emerald" },
+                    { value: "Medium", label: "Medium", dotColor: "amber" },
+                    { value: "High", label: "High", dotColor: "amber" },
+                    { value: "Urgent", label: "Urgent", dotColor: "rose" },
                   ]}
                   className="w-full"
                 />

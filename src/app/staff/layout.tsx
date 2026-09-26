@@ -4,7 +4,7 @@ import React from "react";
 import { usePathname } from "next/navigation";
 import { StaffNavbar } from "@/components/staff";
 
-const HIDE_NAVBAR_ROUTES = ["/staff", "/staff/login"];
+const HIDE_NAVBAR_ROUTES = ["/staff", "/staff/login", "/staff/forgot-password"];
 
 export default function StaffLayout({
   children,

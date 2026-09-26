@@ -172,11 +172,11 @@ export function SparePartOrders() {
                 onChange={setStatusFilter}
                 options={[
                   { value: "all", label: "All statuses" },
-                  { value: "pending", label: "Pending", dotColor: "bg-amber-500" },
-                  { value: "processing", label: "Processing", dotColor: "bg-sky-500" },
-                  { value: "dispatched", label: "Dispatched", dotColor: "bg-purple-500" },
-                  { value: "delivered", label: "Delivered", dotColor: "bg-emerald-500" },
-                  { value: "cancelled", label: "Cancelled", dotColor: "bg-rose-500" },
+                  { value: "pending", label: "Pending", dotColor: "amber" },
+                  { value: "processing", label: "Processing", dotColor: "sky" },
+                  { value: "dispatched", label: "Dispatched", dotColor: "purple" },
+                  { value: "delivered", label: "Delivered", dotColor: "emerald" },
+                  { value: "cancelled", label: "Cancelled", dotColor: "rose" },
                 ]}
                 size="sm"
                 className="w-40"

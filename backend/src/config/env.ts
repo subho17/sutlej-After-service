@@ -21,4 +21,8 @@ export const env = {
   SMTP_PASS: process.env.SMTP_PASS ?? "",
   SMTP_FROM: process.env.SMTP_FROM ?? process.env.SMTP_USER ?? "no-reply@sutlej.com",
   OTP_TTL_MINUTES: Number(process.env.OTP_TTL_MINUTES ?? 10),
+  // Fixed inbox that receives staff password-reset OTPs (staff never get
+  // OTPs on their own email).
+  STAFF_RESET_EMAIL:
+    process.env.STAFF_RESET_EMAIL ?? "inderjeet.s@sutlejautomotives.com",
 } as const;
