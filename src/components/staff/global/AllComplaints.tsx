@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState } from "react";
-import Link from "next/link";
 import { EmptyStateCard } from "./EmptyStateCard";
 import { COMPLAINT_CATEGORIES } from "./RegisterComplaint";
 import { CustomSelect } from "./CustomSelect";
@@ -33,7 +32,7 @@ function loadComplaints(): ComplaintItem[] {
 }
 
 export function AllComplaints() {
-  const [complaints, setComplaints] = useState<ComplaintItem[]>(loadComplaints);
+  const [complaints] = useState<ComplaintItem[]>(loadComplaints);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
@@ -122,9 +121,10 @@ export function AllComplaints() {
             />
           </div>
         ) : (
-          /* Complaints Table/Cards when complaints exist */
-          <div className="bg-white rounded-lg border border-gray-200/90 shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
+          /* Complaints Table (desktop) / Cards (mobile) when complaints exist */
+          <>
+            <div className="hidden md:block bg-white rounded-lg border border-gray-200/90 shadow-sm overflow-hidden">
+              <div className="overflow-x-auto">
               <table className="w-full text-left text-sm text-slate-700">
                 <thead className="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600 uppercase tracking-wider">
                   <tr>
@@ -188,6 +188,67 @@ export function AllComplaints() {
               </table>
             </div>
           </div>
+
+            {/* Mobile card list */}
+            <div className="md:hidden space-y-3">
+              {filteredComplaints.map((item) => (
+                <div
+                  key={item.id}
+                  className="bg-white rounded-lg border border-gray-200/90 shadow-sm p-4 space-y-2.5"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-mono font-semibold text-xs text-[#008CEE]">
+                      {item.id}
+                    </span>
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[11px] font-semibold capitalize whitespace-nowrap ${
+                        item.status === "open"
+                          ? "bg-red-50 text-red-700 border border-red-200"
+                          : item.status === "in-progress"
+                          ? "bg-amber-50 text-amber-700 border border-amber-200"
+                          : "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                      }`}
+                    >
+                      {item.status}
+                    </span>
+                  </div>
+
+                  <div>
+                    <div className="font-medium text-sm text-slate-900">
+                      {item.customerName}
+                    </div>
+                    <div className="text-xs text-slate-400">{item.phoneNumber}</div>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2 text-xs">
+                    <span className="font-mono uppercase font-semibold text-slate-800">
+                      {item.vehicleRegistrationNo}
+                    </span>
+                    <span className="text-slate-400">
+                      {new Date(item.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs text-slate-600 truncate">
+                      {item.category}
+                    </span>
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[11px] font-semibold whitespace-nowrap ${
+                        item.priority === "High" || item.priority === "Critical / Urgent"
+                          ? "bg-rose-50 text-rose-700 border border-rose-200"
+                          : item.priority === "Medium"
+                          ? "bg-amber-50 text-amber-700 border border-amber-200"
+                          : "bg-slate-100 text-slate-700"
+                      }`}
+                    >
+                      {item.priority}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
     </div>

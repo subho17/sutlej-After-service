@@ -16,8 +16,8 @@ export const STAFF_NAV_ITEMS: NavItem[] = [
     href: "/staff/dashboard",
     icon: (active: boolean) => (
       <svg
-        className={`w-3.5 h-3.5 transition-transform duration-200 group-hover:scale-110 ${
-          active ? "text-[#1A1308]" : "text-slate-400 group-hover:text-[#E8A33D]"
+        className={`w-4 h-4 transition-all duration-300 group-hover:scale-125 group-hover:rotate-3 ${
+          active ? "text-[#140F06]" : "text-slate-400 group-hover:text-[#E8A33D]"
         }`}
         viewBox="0 0 24 24"
         fill="none"
@@ -36,8 +36,8 @@ export const STAFF_NAV_ITEMS: NavItem[] = [
     href: "/staff/complaints/new",
     icon: (active: boolean) => (
       <svg
-        className={`w-3.5 h-3.5 transition-transform duration-200 group-hover:scale-110 ${
-          active ? "text-[#1A1308]" : "text-slate-400 group-hover:text-[#E8A33D]"
+        className={`w-4 h-4 transition-all duration-300 group-hover:scale-125 group-hover:rotate-90 ${
+          active ? "text-[#140F06]" : "text-slate-400 group-hover:text-[#E8A33D]"
         }`}
         viewBox="0 0 24 24"
         fill="none"
@@ -53,8 +53,8 @@ export const STAFF_NAV_ITEMS: NavItem[] = [
     href: "/staff/complaints",
     icon: (active: boolean) => (
       <svg
-        className={`w-3.5 h-3.5 transition-transform duration-200 group-hover:scale-110 ${
-          active ? "text-[#1A1308]" : "text-slate-400 group-hover:text-[#E8A33D]"
+        className={`w-4 h-4 transition-all duration-300 group-hover:scale-125 group-hover:-translate-y-0.5 ${
+          active ? "text-[#140F06]" : "text-slate-400 group-hover:text-[#E8A33D]"
         }`}
         viewBox="0 0 24 24"
         fill="none"
@@ -70,8 +70,8 @@ export const STAFF_NAV_ITEMS: NavItem[] = [
     href: "/staff/inventory",
     icon: (active: boolean) => (
       <svg
-        className={`w-3.5 h-3.5 transition-transform duration-200 group-hover:scale-110 ${
-          active ? "text-[#1A1308]" : "text-slate-400 group-hover:text-[#E8A33D]"
+        className={`w-4 h-4 transition-all duration-300 group-hover:scale-125 group-hover:-rotate-6 ${
+          active ? "text-[#140F06]" : "text-slate-400 group-hover:text-[#E8A33D]"
         }`}
         viewBox="0 0 24 24"
         fill="none"
@@ -87,8 +87,8 @@ export const STAFF_NAV_ITEMS: NavItem[] = [
     href: "/staff/orders",
     icon: (active: boolean) => (
       <svg
-        className={`w-3.5 h-3.5 transition-transform duration-200 group-hover:scale-110 ${
-          active ? "text-[#1A1308]" : "text-slate-400 group-hover:text-[#E8A33D]"
+        className={`w-4 h-4 transition-all duration-300 group-hover:scale-125 group-hover:rotate-12 ${
+          active ? "text-[#140F06]" : "text-slate-400 group-hover:text-[#E8A33D]"
         }`}
         viewBox="0 0 24 24"
         fill="none"
@@ -104,8 +104,8 @@ export const STAFF_NAV_ITEMS: NavItem[] = [
     href: "/staff/announcements",
     icon: (active: boolean) => (
       <svg
-        className={`w-3.5 h-3.5 transition-transform duration-200 group-hover:scale-110 ${
-          active ? "text-[#1A1308]" : "text-slate-400 group-hover:text-[#E8A33D]"
+        className={`w-4 h-4 transition-all duration-300 group-hover:scale-125 group-hover:rotate-6 ${
+          active ? "text-[#140F06]" : "text-slate-400 group-hover:text-[#E8A33D]"
         }`}
         viewBox="0 0 24 24"
         fill="none"
@@ -124,6 +124,12 @@ export interface StaffNavbarProps {
   onLogout?: () => void;
 }
 
+/**
+ * Modern High-Impact Staff Navbar
+ * - Height: h-20 (spacious & bold)
+ * - Layout: Logo pinned to far-left corner, Profile & Logout pinned to far-right corner
+ * - Animations: Dynamic 3D hover effects, glowing underbeams, pulsing online indicators, and micro-icons
+ */
 export function StaffNavbar({
   currentTab,
   staffName = "Staff",
@@ -149,18 +155,19 @@ export function StaffNavbar({
   };
 
   return (
-    <nav className="relative w-full bg-[#0E131B]/95 backdrop-blur-xl border-b border-slate-800/80 sticky top-0 z-50 select-none shadow-[0_4px_24px_rgba(0,0,0,0.35)] transition-all">
-      {/* Top Ambient Glow Line */}
-      <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-[#E8A33D]/40 to-transparent pointer-events-none" />
+    <nav className="relative w-full bg-[#0B0F17]/95 backdrop-blur-2xl border-b border-slate-800/80 sticky top-0 z-50 select-none shadow-[0_8px_32px_rgba(0,0,0,0.5)] transition-all">
+      {/* Top Ambient Glow Beam */}
+      <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-[#E8A33D]/60 to-transparent pointer-events-none" />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-        {/* Left: Brand Identity with Official Animated Sutlej Logo */}
+      {/* Main Full-Width Container (Logo far-left, Profile/Logout far-right) */}
+      <div className="w-full px-3 sm:px-8 lg:px-10 h-16 sm:h-20 flex items-center justify-between gap-2 sm:gap-4">
+        {/* ================= FAR LEFT CORNER: BRAND LOGO ================= */}
         <Link
           href="/staff"
-          className="flex items-center gap-3 group focus:outline-none shrink-0"
+          className="flex items-center gap-2 sm:gap-3.5 group focus:outline-none shrink-0 min-w-0"
         >
-          {/* Circular Sutlej Emblem Badge with Hover Glow */}
-          <div className="relative w-9 h-9 flex items-center justify-center shrink-0 group-hover:scale-105 group-hover:rotate-6 transition-all duration-300 drop-shadow-[0_2px_10px_rgba(0,140,238,0.45)]">
+          {/* Animated Sutlej Circular Emblem */}
+          <div className="relative w-9 h-9 sm:w-11 sm:h-11 flex items-center justify-center shrink-0 group-hover:scale-105 group-hover:rotate-6 transition-all duration-300 drop-shadow-[0_4px_16px_rgba(0,140,238,0.55)]">
             <svg
               viewBox="0 0 100 100"
               className="w-full h-full"
@@ -169,13 +176,13 @@ export function StaffNavbar({
             >
               <defs>
                 <linearGradient id="staffSutlejBlue" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#009BFA" />
+                  <stop offset="0%" stopColor="#00A2FF" />
                   <stop offset="50%" stopColor="#008CEE" />
-                  <stop offset="100%" stopColor="#0073DC" />
+                  <stop offset="100%" stopColor="#006CD0" />
                 </linearGradient>
                 <linearGradient id="staffSutlejRing" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#38BDF8" stopOpacity="0.9" />
-                  <stop offset="100%" stopColor="#008CEE" stopOpacity="0.75" />
+                  <stop offset="0%" stopColor="#38BDF8" stopOpacity="0.95" />
+                  <stop offset="100%" stopColor="#008CEE" stopOpacity="0.8" />
                 </linearGradient>
               </defs>
 
@@ -185,7 +192,7 @@ export function StaffNavbar({
                 cy="50"
                 r="46"
                 stroke="url(#staffSutlejRing)"
-                strokeWidth="3"
+                strokeWidth="3.5"
                 className="opacity-90 group-hover:opacity-100 transition-opacity"
               />
 
@@ -211,10 +218,10 @@ export function StaffNavbar({
             </svg>
           </div>
 
-          {/* Brand Titles */}
-          <div className="flex flex-col">
+          {/* Brand Typography */}
+          <div className="flex flex-col min-w-0">
             <span
-              className="text-base font-black tracking-wide text-white leading-tight group-hover:text-sky-300 transition-colors"
+              className="text-sm sm:text-base lg:text-lg font-black tracking-wider text-white leading-tight group-hover:text-sky-300 transition-colors truncate"
               style={{
                 fontFamily:
                   "'Orbitron', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
@@ -222,31 +229,31 @@ export function StaffNavbar({
             >
               SUTLEJ AUTOMOTIVES
             </span>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              {/* Online Pulse Indicator */}
+            <div className="flex items-center gap-2 mt-0.5">
+              {/* Pulsing Live Online Indicator */}
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
               </span>
-              <span className="text-[11px] font-medium text-slate-400 leading-tight group-hover:text-slate-300 transition-colors">
+              <span className="text-xs font-semibold text-slate-400 leading-tight group-hover:text-slate-300 transition-colors">
                 Staff Service Desk
               </span>
             </div>
           </div>
         </Link>
 
-        {/* Center: Desktop Navigation Bar with Modern Glassmorphic Container & Hover Effects */}
-        <div className="hidden xl:flex items-center bg-[#131822]/90 border border-slate-800/80 rounded-xl p-1 shadow-[inset_0_1px_3px_rgba(0,0,0,0.5)] gap-1">
+        {/* ================= CENTER: MODERN NAVIGATION MENU ================= */}
+        <div className="hidden xl:flex items-center bg-[#111621]/95 border border-white/[0.08] rounded-2xl p-1.5 shadow-[inset_0_2px_4px_rgba(0,0,0,0.6)] gap-1.5">
           {STAFF_NAV_ITEMS.map((item) => {
             const active = isActive(item);
             return (
               <Link
                 key={item.label}
                 href={item.href}
-                className={`relative group flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition-all duration-200 whitespace-nowrap overflow-hidden ${
+                className={`relative group flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold tracking-wide transition-all duration-300 whitespace-nowrap overflow-hidden ${
                   active
-                    ? "bg-gradient-to-r from-[#E8A33D] to-[#F5B453] text-[#1A1308] font-bold shadow-[0_2px_12px_rgba(232,163,61,0.35)] scale-[1.02]"
-                    : "text-slate-300 hover:text-white hover:bg-white/[0.08] hover:-translate-y-0.5 active:translate-y-0"
+                    ? "bg-gradient-to-r from-[#E8A33D] via-[#EEAC46] to-[#F5B853] text-[#140F06] font-bold shadow-[0_4px_16px_rgba(232,163,61,0.45)] -translate-y-0.5 ring-2 ring-[#E8A33D]/25"
+                    : "text-slate-300 hover:text-white hover:bg-white/[0.08] hover:-translate-y-1 hover:shadow-[0_8px_20px_-4px_rgba(232,163,61,0.25)] active:translate-y-0"
                 }`}
               >
                 {/* Micro Icon */}
@@ -255,9 +262,9 @@ export function StaffNavbar({
                 {/* Label */}
                 <span>{item.label}</span>
 
-                {/* Animated Bottom Glow Underline on Inactive Hover */}
+                {/* Animated Glowing Underbeam on Hover (Inactive Only) */}
                 {!active && (
-                  <span className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[2px] w-0 bg-gradient-to-r from-transparent via-[#E8A33D] to-transparent group-hover:w-4/5 transition-all duration-300 rounded-full" />
+                  <span className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[2.5px] w-0 bg-gradient-to-r from-[#E8A33D] to-[#FFC876] group-hover:w-4/5 transition-all duration-300 rounded-full shadow-[0_0_10px_#E8A33D]" />
                 )}
               </Link>
             );
@@ -265,51 +272,63 @@ export function StaffNavbar({
         </div>
 
         {/* Medium Screens Navigation Bar */}
-        <div className="hidden md:flex xl:hidden items-center bg-[#131822]/90 border border-slate-800/80 rounded-xl p-1 overflow-x-auto max-w-[500px] gap-1 shadow-inner">
+        <div className="hidden lg:flex xl:hidden items-center bg-[#111621]/95 border border-white/[0.08] rounded-2xl p-1.5 overflow-x-auto max-w-[540px] gap-1 shadow-inner">
           {STAFF_NAV_ITEMS.map((item) => {
             const active = isActive(item);
             return (
               <Link
                 key={item.label}
                 href={item.href}
-                className={`relative group flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold tracking-wide transition-all duration-200 whitespace-nowrap overflow-hidden ${
+                className={`relative group flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition-all duration-300 whitespace-nowrap overflow-hidden ${
                   active
-                    ? "bg-gradient-to-r from-[#E8A33D] to-[#F5B453] text-[#1A1308] font-bold shadow-[0_2px_10px_rgba(232,163,61,0.35)]"
+                    ? "bg-gradient-to-r from-[#E8A33D] to-[#F5B853] text-[#140F06] font-bold shadow-[0_2px_12px_rgba(232,163,61,0.4)]"
                     : "text-slate-300 hover:text-white hover:bg-white/[0.08] hover:-translate-y-0.5"
                 }`}
               >
                 {item.icon(active)}
                 <span>{item.label}</span>
                 {!active && (
-                  <span className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[2px] w-0 bg-gradient-to-r from-transparent via-[#E8A33D] to-transparent group-hover:w-4/5 transition-all duration-300 rounded-full" />
+                  <span className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[2px] w-0 bg-[#E8A33D] group-hover:w-4/5 transition-all duration-300 rounded-full shadow-[0_0_8px_#E8A33D]" />
                 )}
               </Link>
             );
           })}
         </div>
 
-        {/* Right: Staff Identity & Modern Glassmorphic Log Out Button */}
-        <div className="flex items-center gap-3 shrink-0">
-          {/* User Profile Pill */}
-          <div className="hidden sm:flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] px-2.5 py-1 rounded-full shadow-inner">
-            <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center text-[10px] font-bold text-white shadow-xs">
-              {staffName.charAt(0).toUpperCase()}
+        {/* ================= FAR RIGHT CORNER: PROFILE & LOG OUT ================= */}
+        <div className="flex items-center gap-2 sm:gap-3.5 shrink-0">
+          {/* User Profile Card */}
+          <div className="hidden sm:flex items-center gap-2.5 bg-white/[0.04] border border-white/[0.08] hover:border-white/15 px-3 py-1.5 rounded-full transition-all duration-200 shadow-inner group">
+            {/* Avatar with Glow Ring */}
+            <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-sky-500 via-indigo-500 to-amber-500 p-0.5 shadow-sm group-hover:scale-105 transition-transform">
+              <div className="w-full h-full rounded-full bg-[#111621] flex items-center justify-center text-xs font-bold text-sky-300">
+                {staffName.charAt(0).toUpperCase()}
+              </div>
             </div>
-            <span className="text-xs text-slate-300 font-medium">
-              {staffName}
-            </span>
+
+            <div className="flex flex-col">
+              <span className="text-xs font-bold text-white leading-tight">
+                {staffName}
+              </span>
+              <span className="text-[10px] text-emerald-400 font-medium leading-tight flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                Active
+              </span>
+            </div>
           </div>
 
-          {/* Modern Log Out Button with Sliding Arrow Hover */}
+          <div className="h-6 w-px bg-slate-800 hidden sm:block" />
+
+          {/* Modern Log Out Button with Hover Arrow Animation */}
           {onLogout ? (
             <button
               onClick={onLogout}
               type="button"
-              className="group flex items-center gap-1.5 text-xs font-semibold text-slate-200 hover:text-rose-200 px-3.5 py-1.5 rounded-lg border border-white/10 hover:border-rose-500/40 bg-white/[0.04] hover:bg-rose-500/15 transition-all duration-200 cursor-pointer shadow-sm hover:shadow-[0_0_14px_rgba(244,63,94,0.25)] hover:-translate-y-0.5 active:translate-y-0"
+              className="group flex items-center gap-2 text-xs sm:text-sm font-semibold text-slate-200 hover:text-rose-200 px-2.5 sm:px-4 py-2 rounded-xl border border-white/10 hover:border-rose-500/50 bg-white/[0.04] hover:bg-rose-500/15 transition-all duration-200 cursor-pointer shadow-sm hover:shadow-[0_0_18px_rgba(244,63,94,0.3)] hover:-translate-y-0.5 active:translate-y-0"
             >
               <span>Log out</span>
               <svg
-                className="w-3.5 h-3.5 text-slate-400 group-hover:text-rose-300 group-hover:translate-x-0.5 transition-transform duration-200"
+                className="hidden sm:block w-4 h-4 text-slate-400 group-hover:text-rose-300 group-hover:translate-x-1 transition-transform duration-200"
                 viewBox="0 0 20 20"
                 fill="none"
                 stroke="currentColor"
@@ -325,11 +344,11 @@ export function StaffNavbar({
           ) : (
             <Link
               href="/"
-              className="group flex items-center gap-1.5 text-xs font-semibold text-slate-200 hover:text-rose-200 px-3.5 py-1.5 rounded-lg border border-white/10 hover:border-rose-500/40 bg-white/[0.04] hover:bg-rose-500/15 transition-all duration-200 shadow-sm hover:shadow-[0_0_14px_rgba(244,63,94,0.25)] hover:-translate-y-0.5 active:translate-y-0"
+              className="group flex items-center gap-2 text-xs sm:text-sm font-semibold text-slate-200 hover:text-rose-200 px-2.5 sm:px-4 py-2 rounded-xl border border-white/10 hover:border-rose-500/50 bg-white/[0.04] hover:bg-rose-500/15 transition-all duration-200 shadow-sm hover:shadow-[0_0_18px_rgba(244,63,94,0.3)] hover:-translate-y-0.5 active:translate-y-0"
             >
               <span>Log out</span>
               <svg
-                className="w-3.5 h-3.5 text-slate-400 group-hover:text-rose-300 group-hover:translate-x-0.5 transition-transform duration-200"
+                className="hidden sm:block w-4 h-4 text-slate-400 group-hover:text-rose-300 group-hover:translate-x-1 transition-transform duration-200"
                 viewBox="0 0 20 20"
                 fill="none"
                 stroke="currentColor"
@@ -348,11 +367,11 @@ export function StaffNavbar({
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             type="button"
-            className="md:hidden text-slate-300 hover:text-white p-1.5 rounded-lg hover:bg-white/[0.08] transition-colors"
+            className="lg:hidden text-slate-300 hover:text-white p-2 rounded-xl hover:bg-white/[0.08] transition-colors"
             aria-label="Toggle navigation menu"
           >
             <svg
-              className="w-5 h-5 transition-transform duration-200"
+              className="w-6 h-6 transition-transform duration-200"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -379,7 +398,7 @@ export function StaffNavbar({
 
       {/* Mobile Animated Dropdown Navigation */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-slate-800 bg-[#0E131B]/98 backdrop-blur-xl px-4 py-3 space-y-1.5 animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="lg:hidden border-t border-slate-800 bg-[#0B0F17]/98 backdrop-blur-2xl px-5 py-4 space-y-2 animate-in fade-in slide-in-from-top-2 duration-200 shadow-2xl">
           {STAFF_NAV_ITEMS.map((item) => {
             const active = isActive(item);
             return (
@@ -387,9 +406,9 @@ export function StaffNavbar({
                 key={item.label}
                 href={item.href}
                 onClick={() => setMobileMenuOpen(false)}
-                className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
+                className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
                   active
-                    ? "bg-gradient-to-r from-[#E8A33D] to-[#F5B453] text-[#1A1308] font-bold shadow-md"
+                    ? "bg-gradient-to-r from-[#E8A33D] to-[#F5B453] text-[#140F06] font-bold shadow-md"
                     : "text-slate-300 hover:text-white hover:bg-white/[0.08]"
                 }`}
               >

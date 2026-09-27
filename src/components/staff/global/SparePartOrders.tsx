@@ -1,8 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import Link from "next/link";
-import { CustomSelect, SelectOption } from "./CustomSelect";
+import { CustomSelect } from "./CustomSelect";
 
 export interface OrderItem {
   partId: string;
@@ -236,9 +235,10 @@ export function SparePartOrders() {
             </p>
           </div>
         ) : (
-          /* Orders Table View */
-          <div className="bg-white rounded-xl border border-gray-200/80 shadow-sm overflow-hidden mt-2">
-            <div className="overflow-x-auto">
+          /* Orders Table (desktop) / Cards (mobile) */
+          <>
+            <div className="hidden md:block bg-white rounded-xl border border-gray-200/80 shadow-sm overflow-hidden mt-2">
+              <div className="overflow-x-auto">
               <table className="w-full text-left text-sm text-slate-700">
                 <thead className="bg-slate-50 border-b border-gray-200/80 text-xs uppercase font-semibold text-slate-500 tracking-wider">
                   <tr>
@@ -302,13 +302,68 @@ export function SparePartOrders() {
               </table>
             </div>
           </div>
+
+            {/* Mobile card list */}
+            <div className="md:hidden space-y-3 mt-2">
+              {filteredOrders.map((order) => (
+                <div
+                  key={order.id}
+                  className="bg-white rounded-xl border border-gray-200/80 shadow-sm p-4 space-y-2.5"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-mono font-semibold text-xs text-slate-900">
+                      {order.id}
+                    </span>
+                    {getStatusBadge(order.status)}
+                  </div>
+
+                  <div>
+                    <div className="font-semibold text-slate-900 text-sm">
+                      {order.customerName}
+                    </div>
+                    <div className="text-xs text-slate-500">
+                      {order.phoneNumber}
+                    </div>
+                  </div>
+
+                  <div className="text-xs text-slate-600">
+                    {order.items.map((item, idx) => (
+                      <div key={idx} className="truncate">
+                        {item.partName} × {item.quantity}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-semibold text-slate-900 text-sm">
+                      ₹{order.totalAmount.toLocaleString("en-IN")}
+                    </span>
+                    <span className="text-xs text-slate-500">
+                      {new Date(order.createdAt).toLocaleDateString("en-IN", {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                      })}
+                    </span>
+                  </div>
+
+                  <button
+                    onClick={() => setSelectedOrder(order)}
+                    className="w-full py-2 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold transition-colors cursor-pointer"
+                  >
+                    View Details
+                  </button>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
 
       {/* Order Details Modal */}
       {selectedOrder && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl border border-slate-200 max-w-lg w-full p-6 animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-xl border border-slate-200 max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 animate-in fade-in zoom-in-95 duration-150 my-auto">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
               <div>
                 <h3 className="text-base font-bold text-gray-900">
@@ -427,10 +482,10 @@ export function SparePartOrders() {
 
       {/* Create Order Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
           <form
             onSubmit={handleCreateOrder}
-            className="bg-white rounded-xl shadow-xl border border-slate-200 max-w-md w-full p-6 animate-in fade-in zoom-in-95 duration-150"
+            className="bg-white rounded-xl shadow-xl border border-slate-200 max-w-md w-full max-h-[90vh] overflow-y-auto p-6 animate-in fade-in zoom-in-95 duration-150 my-auto"
           >
             <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
               <h3 className="text-base font-bold text-gray-900">

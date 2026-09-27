@@ -1,5 +1,12 @@
-import { CustomerLogin } from "@/components/customer/login";
+import { CustomerNavbar, CustomerDashboard } from "@/components/customer/global";
 
 export default function CustomerPage() {
-  return <CustomerLogin />;
+  return (
+    <div className="min-h-screen flex flex-col bg-[#F8F9FA]">
+      <CustomerNavbar currentTab="Home" />
+      <main className="flex-1">
+        <CustomerDashboard />
+      </main>
+    </div>
+  );
 }

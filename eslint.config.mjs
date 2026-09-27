@@ -15,6 +15,8 @@ const eslintConfig = defineConfig([
     // Backend is a separate package with its own tsc check:
     "backend/**",
     "node_modules/**",
+    // External agent worktrees checked out inside the repo:
+    ".kilo/**",
   ]),
 ]);
 
