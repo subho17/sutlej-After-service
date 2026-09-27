@@ -4,7 +4,11 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { SutlejLogo } from "@/components/global";
-import { DEMO_STAFF, API_BASE } from "@/lib/demoStaff";
+import { apiPost } from "@/lib/api";
+
+interface StaffLoginData {
+  name: string;
+}
 
 export function StaffLogin() {
   const router = useRouter();
@@ -12,17 +16,6 @@ export function StaffLogin() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-
-  function isDemoMatch(id: string, pw: string): boolean {
-    const v = id.trim();
-    return (
-      (v === DEMO_STAFF.staffId ||
-        v === DEMO_STAFF.username ||
-        v.toLowerCase() === DEMO_STAFF.email ||
-        v === DEMO_STAFF.phone) &&
-      pw === DEMO_STAFF.password
-    );
-  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -35,34 +28,18 @@ export function StaffLogin() {
 
     setLoading(true);
     try {
-      // Try backend first; fall back to local demo check if API is down.
-      try {
-        const res = await fetch(`${API_BASE}/api/auth/staff/login`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ identifier: identifier.trim(), password }),
-        });
-        const data = await res.json().catch(() => null);
-        if (res.ok) {
-          sessionStorage.setItem("staffName", data?.data?.name ?? DEMO_STAFF.name);
-          router.push("/staff/dashboard");
-          return;
-        }
-        // If backend reachable but rejected, surface message unless demo matches locally.
-        if (!isDemoMatch(identifier, password)) {
-          setError(data?.message ?? "Invalid staff credentials.");
-          return;
-        }
-      } catch {
-        // Backend down — allow local demo login so UI is testable.
-        if (!isDemoMatch(identifier, password)) {
-          setError("Unable to reach server. Please try again.");
-          return;
-        }
+      const { ok, body } = await apiPost<StaffLoginData>("/api/auth/staff/login", {
+        identifier: identifier.trim(),
+        password,
+      });
+      if (!ok) {
+        setError(body?.message ?? "Invalid staff credentials.");
+        return;
       }
-
-      sessionStorage.setItem("staffName", DEMO_STAFF.name);
+      if (body?.data?.name) sessionStorage.setItem("staffName", body.data.name);
       router.push("/staff/dashboard");
+    } catch {
+      setError("Unable to reach server. Please try again.");
     } finally {
       setLoading(false);
     }

@@ -11,3 +11,7 @@ export * from "./RaiseComplaint";
 export { default as RaiseComplaint } from "./RaiseComplaint";
 export * from "./MyComplaints";
 export { default as MyComplaints } from "./MyComplaints";
+export * from "./ShopSpares";
+export { default as ShopSpares } from "./ShopSpares";
+export * from "./MyOrders";
+export { default as MyOrders } from "./MyOrders";

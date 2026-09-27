@@ -1,11 +1,18 @@
 import type { Request, Response } from "express";
 import crypto from "node:crypto";
-import { Customer } from "../models/Customer.js";
-import { Staff } from "../models/Staff.js";
-import { PasswordReset } from "../models/PasswordReset.js";
+import { findCustomerByIdentifier, updateCustomerPassword } from "../db/customers.js";
+import { findStaffByIdentifier, updateStaffPassword } from "../db/staff.js";
+import {
+  bumpResetAttempts,
+  createReset,
+  invalidateResets,
+  latestActiveReset,
+  markResetUsed,
+} from "../db/passwordResets.js";
 import { ApiError } from "../utils/ApiError.js";
 import { env } from "../config/env.js";
 import { isMailConfigured, sendOtpEmail } from "../utils/mailer.js";
+import { hashSecret, verifySecret } from "../utils/password.js";
 
 const MAX_ATTEMPTS = 5;
 
@@ -18,15 +25,12 @@ function newOtp(): string {
 }
 
 // POST /api/auth/customer/forgot-password  { identifier }
-// identifier = email | phone. Customer-only: staff accounts are never emailed.
+// identifier = email | phone. OTP goes to the customer's own email.
 export async function requestCustomerPasswordReset(req: Request, res: Response) {
   const identifier = normalize(req.body?.identifier);
   if (!identifier) throw new ApiError(400, "Email or phone number is required");
 
-  const idLower = identifier.toLowerCase();
-  const customer = await Customer.findOne({
-    $or: [{ email: idLower }, { phone: identifier }],
-  });
+  const customer = await findCustomerByIdentifier(identifier);
 
   // Always respond the same way so accounts can't be enumerated.
   if (!customer) {
@@ -42,18 +46,14 @@ export async function requestCustomerPasswordReset(req: Request, res: Response) 
     throw new ApiError(503, "Email service is not configured. Please try again later.");
   }
 
-  // Invalidate older codes for this customer, then issue a fresh one.
-  await PasswordReset.updateMany(
-    { customerId: customer._id, used: false },
-    { $set: { used: true } }
-  );
+  await invalidateResets("customer", customer.id);
 
   const otp = newOtp();
-  await PasswordReset.create({
+  await createReset({
     role: "customer",
-    customerId: customer._id,
+    accountId: customer.id,
     email: customer.email,
-    otp,
+    otpHash: await hashSecret(otp),
     expiresAt: new Date(Date.now() + env.OTP_TTL_MINUTES * 60 * 1000),
   });
 
@@ -73,39 +73,24 @@ export async function resetCustomerPassword(req: Request, res: Response) {
     throw new ApiError(400, "Password must be at least 6 characters.");
   }
 
-  const idLower = identifier.toLowerCase();
-  const customer = await Customer.findOne({
-    $or: [{ email: idLower }, { phone: identifier }],
-  });
+  const customer = await findCustomerByIdentifier(identifier);
   if (!customer) throw new ApiError(400, "Invalid code. Please request a new one.");
 
-  const record = await PasswordReset.findOne({
-    role: "customer",
-    customerId: customer._id,
-    used: false,
-    expiresAt: { $gt: new Date() },
-  }).sort({ createdAt: -1 });
-
+  const record = await latestActiveReset("customer", customer.id);
   if (!record) throw new ApiError(400, "Code expired. Please request a new one.");
 
   if (record.attempts >= MAX_ATTEMPTS) {
-    record.used = true;
-    await record.save();
+    await markResetUsed(record.id, record.attempts);
     throw new ApiError(429, "Too many attempts. Please request a new code.");
   }
 
-  if (record.otp !== otp) {
-    record.attempts += 1;
-    await record.save();
+  if (!(await verifySecret(otp, record.otp_hash))) {
+    await bumpResetAttempts(record.id, record.attempts + 1);
     throw new ApiError(400, "Invalid code. Please try again.");
   }
 
-  // NOTE: demo only — hash passwords (bcrypt) before production use.
-  customer.passwordHash = newPassword;
-  await customer.save();
-
-  record.used = true;
-  await record.save();
+  await updateCustomerPassword(customer.id, await hashSecret(newPassword));
+  await markResetUsed(record.id, record.attempts);
 
   res.json({ message: "Password updated. You can now log in." });
 }
@@ -118,15 +103,7 @@ export async function requestStaffPasswordReset(req: Request, res: Response) {
   const identifier = normalize(req.body?.identifier);
   if (!identifier) throw new ApiError(400, "Staff ID / email / phone is required");
 
-  const idLower = identifier.toLowerCase();
-  const staff = await Staff.findOne({
-    $or: [
-      { staffId: identifier },
-      { username: identifier },
-      { email: idLower },
-      { phone: identifier },
-    ],
-  });
+  const staff = await findStaffByIdentifier(identifier);
 
   // Always respond the same way so accounts can't be enumerated.
   if (!staff) {
@@ -138,26 +115,18 @@ export async function requestStaffPasswordReset(req: Request, res: Response) {
     throw new ApiError(503, "Email service is not configured. Please try again later.");
   }
 
-  // Invalidate older codes for this staff member, then issue a fresh one.
-  await PasswordReset.updateMany(
-    { role: "staff", staffId: staff._id, used: false },
-    { $set: { used: true } }
-  );
+  await invalidateResets("staff", staff.id);
 
   const otp = newOtp();
-  await PasswordReset.create({
+  await createReset({
     role: "staff",
-    staffId: staff._id,
+    accountId: staff.id,
     email: env.STAFF_RESET_EMAIL.toLowerCase(),
-    otp,
+    otpHash: await hashSecret(otp),
     expiresAt: new Date(Date.now() + env.OTP_TTL_MINUTES * 60 * 1000),
   });
 
-  await sendOtpEmail(
-    env.STAFF_RESET_EMAIL,
-    otp,
-    `${staff.name} (${staff.staffId})`
-  );
+  await sendOtpEmail(env.STAFF_RESET_EMAIL, otp, `${staff.name} (${staff.staff_id})`);
 
   res.json({ message: "If the staff account exists, a reset code has been sent for approval." });
 }
@@ -173,44 +142,24 @@ export async function resetStaffPassword(req: Request, res: Response) {
     throw new ApiError(400, "Password must be at least 6 characters.");
   }
 
-  const idLower = identifier.toLowerCase();
-  const staff = await Staff.findOne({
-    $or: [
-      { staffId: identifier },
-      { username: identifier },
-      { email: idLower },
-      { phone: identifier },
-    ],
-  });
+  const staff = await findStaffByIdentifier(identifier);
   if (!staff) throw new ApiError(400, "Invalid code. Please request a new one.");
 
-  const record = await PasswordReset.findOne({
-    role: "staff",
-    staffId: staff._id,
-    used: false,
-    expiresAt: { $gt: new Date() },
-  }).sort({ createdAt: -1 });
-
+  const record = await latestActiveReset("staff", staff.id);
   if (!record) throw new ApiError(400, "Code expired. Please request a new one.");
 
   if (record.attempts >= MAX_ATTEMPTS) {
-    record.used = true;
-    await record.save();
+    await markResetUsed(record.id, record.attempts);
     throw new ApiError(429, "Too many attempts. Please request a new code.");
   }
 
-  if (record.otp !== otp) {
-    record.attempts += 1;
-    await record.save();
+  if (!(await verifySecret(otp, record.otp_hash))) {
+    await bumpResetAttempts(record.id, record.attempts + 1);
     throw new ApiError(400, "Invalid code. Please try again.");
   }
 
-  // NOTE: demo only — hash passwords (bcrypt) before production use.
-  staff.passwordHash = newPassword;
-  await staff.save();
-
-  record.used = true;
-  await record.save();
+  await updateStaffPassword(staff.id, await hashSecret(newPassword));
+  await markResetUsed(record.id, record.attempts);
 
   res.json({ message: "Password updated. You can now log in." });
 }

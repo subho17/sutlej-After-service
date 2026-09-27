@@ -1,10 +1,10 @@
 import "dotenv/config";
-import { env } from "./config/env.js";
-import { connectDB } from "./config/db.js";
+import { assertEnv, env } from "./config/env.js";
 import { createApp } from "./app.js";
 
 async function main() {
-  await connectDB(env.MONGO_URI);
+  // Fail fast: Supabase is the live database.
+  assertEnv();
 
   const app = createApp();
 

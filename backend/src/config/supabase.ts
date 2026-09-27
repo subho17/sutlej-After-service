@@ -5,20 +5,18 @@ let adminClient: SupabaseClient | null = null;
 
 /**
  * Supabase admin client (service-role key, bypasses RLS).
- * Use ONLY on the backend — never expose the service key to the frontend.
- * Returns null when SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY are not set,
- * so the app keeps running on Mongo until Supabase is configured.
+ * Backend-only — the service key must never reach the frontend.
  */
-export function getSupabaseAdmin(): SupabaseClient | null {
-  if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) return null;
+export function supabaseAdmin(): SupabaseClient {
+  if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error(
+      "[backend] Supabase is not configured. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY."
+    );
+  }
   if (!adminClient) {
     adminClient = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
       auth: { persistSession: false },
     });
   }
   return adminClient;
-}
-
-export function isSupabaseConfigured(): boolean {
-  return Boolean(env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY);
 }

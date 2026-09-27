@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { SutlejLogo } from "@/components/global";
-import { API_BASE } from "@/lib/demoStaff";
+import { apiPost } from "@/lib/api";
 
 export function StaffForgotPassword() {
   const router = useRouter();
@@ -27,14 +27,11 @@ export function StaffForgotPassword() {
 
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/auth/staff/forgot-password`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ identifier: identifier.trim() }),
+      const { ok, body } = await apiPost<unknown>("/api/auth/staff/forgot-password", {
+        identifier: identifier.trim(),
       });
-      const data = await res.json().catch(() => null);
-      if (!res.ok) {
-        setError(data?.message ?? "Could not send reset code. Please try again.");
+      if (!ok) {
+        setError(body?.message ?? "Could not send reset code. Please try again.");
         return;
       }
       setStep("verify");
@@ -64,18 +61,13 @@ export function StaffForgotPassword() {
 
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/auth/staff/reset-password`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          identifier: identifier.trim(),
-          otp: otp.trim(),
-          newPassword,
-        }),
+      const { ok, body } = await apiPost<unknown>("/api/auth/staff/reset-password", {
+        identifier: identifier.trim(),
+        otp: otp.trim(),
+        newPassword,
       });
-      const data = await res.json().catch(() => null);
-      if (!res.ok) {
-        setError(data?.message ?? "Could not reset password. Please try again.");
+      if (!ok) {
+        setError(body?.message ?? "Could not reset password. Please try again.");
         return;
       }
       setStep("success");
