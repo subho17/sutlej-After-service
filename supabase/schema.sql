@@ -66,11 +66,17 @@ create table if not exists public.customers (
   phone         text        not null,          -- login id
   email         text,                          -- login id (nullable: walk-ins)
   password_hash text,                          -- bcrypt, null until password set
+  company_name  text,                          -- optional (resorts, clubs)
+  gst_number    text,                          -- optional
   created_at    timestamptz not null default now(),
   updated_at    timestamptz not null default now()
 );
 
 comment on table public.customers is 'Vehicle owners. Login accepts customer_id, email or phone.';
+
+-- Company columns for DBs created by the older script (no-op if present).
+alter table public.customers add column if not exists company_name text;
+alter table public.customers add column if not exists gst_number text;
 
 -- Fast login lookups on non-unique columns.
 create index if not exists idx_customers_email on public.customers (email);
@@ -251,6 +257,24 @@ create table if not exists public.password_resets (
 );
 
 comment on table public.password_resets is 'One row per OTP request. Staff OTPs go to the fixed admin inbox.';
+
+-- Signup OTPs (email verification for brand-new customers; no account yet).
+create table if not exists public.signup_requests (
+  id           uuid        primary key default gen_random_uuid(),
+  name         text        not null,
+  phone        text        not null,
+  email        text        not null,
+  otp_hash     text        not null,   -- bcrypt, never plain text
+  expires_at   timestamptz not null,
+  used         boolean     not null default false,
+  attempts     integer     not null default 0,
+  created_at   timestamptz not null default now()
+);
+
+comment on table public.signup_requests is 'Pending customer signups awaiting email OTP verification.';
+
+create index if not exists idx_signup_requests_email
+  on public.signup_requests (email, used, expires_at);
 
 create index if not exists idx_password_resets_customer
   on public.password_resets (customer_id, used, expires_at);

@@ -43,6 +43,45 @@ export async function createCustomer(input: {
   return data as CustomerRow;
 }
 
+export async function createCustomerAccount(input: {
+  name: string;
+  phone: string;
+  email: string;
+  customerId: string;
+  passwordHash: string;
+  companyName?: string;
+  gstNumber?: string;
+}): Promise<CustomerRow> {
+  const { data, error } = await supabaseAdmin()
+    .from("customers")
+    .insert({
+      name: input.name,
+      phone: input.phone,
+      email: input.email,
+      customer_id: input.customerId,
+      password_hash: input.passwordHash,
+      company_name: input.companyName ?? null,
+      gst_number: input.gstNumber ?? null,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as CustomerRow;
+}
+
+export async function emailOrPhoneTaken(email: string, phone: string): Promise<boolean> {
+  const { data, error } = await supabaseAdmin()
+    .from("customers")
+    .select("id")
+    .or(`email.eq.${email.toLowerCase()},phone.eq.${phone}`)
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data !== null;
+}
+
 export async function updateCustomerPassword(id: string, passwordHash: string): Promise<void> {
   const { error } = await supabaseAdmin()
     .from("customers")

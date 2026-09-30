@@ -34,3 +34,22 @@ create index if not exists idx_password_resets_customer
   on public.password_resets (customer_id, used, expires_at);
 create index if not exists idx_password_resets_staff
   on public.password_resets (staff_id, used, expires_at);
+
+-- Signup OTPs (email verification for brand-new customers; no account yet).
+-- Lives in this file: same AUTH DOMAIN, same run position (needs nothing).
+create table if not exists public.signup_requests (
+  id           uuid        primary key default gen_random_uuid(),
+  name         text        not null,
+  phone        text        not null,
+  email        text        not null,
+  otp_hash     text        not null,   -- bcrypt, never plain text
+  expires_at   timestamptz not null,
+  used         boolean     not null default false,
+  attempts     integer     not null default 0,
+  created_at   timestamptz not null default now()
+);
+
+comment on table public.signup_requests is 'Pending customer signups awaiting email OTP verification.';
+
+create index if not exists idx_signup_requests_email
+  on public.signup_requests (email, used, expires_at);

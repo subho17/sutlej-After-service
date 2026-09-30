@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { SutlejLogo } from "@/components/global";
+import { apiPost } from "@/lib/api";
 
 export interface CustomerSignupData {
   fullName: string;
@@ -19,7 +20,7 @@ export interface CustomerSignupData {
 
 export function CustomerSignup() {
   const router = useRouter();
-  const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
+  const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(1);
 
   const [formData, setFormData] = useState<CustomerSignupData>({
     fullName: "",
@@ -35,6 +36,7 @@ export function CustomerSignup() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [otp, setOtp] = useState("");
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -75,7 +77,7 @@ export function CustomerSignup() {
     setCurrentStep(3);
   };
 
-  // Step 3 Final Submission
+  // Step 3 Final Submission → request email OTP, then step 4 to verify
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -96,25 +98,81 @@ export function CustomerSignup() {
     setLoading(true);
 
     try {
-      const customerRecord = {
+      const { ok, body } = await apiPost<unknown>("/api/auth/customer/signup/request", {
         name: formData.fullName.trim(),
         phone: formData.phone.trim(),
         email: formData.email.trim(),
-        companyName: formData.companyName.trim() || null,
-        gstNumber: formData.gstNumber.trim() || null,
-        vehicle: {
-          registrationNo: formData.registrationNo.trim(),
+      });
+      if (!ok) {
+        setError(body?.message ?? "Could not send verification code. Please try again.");
+        return;
+      }
+      setOtp("");
+      setCurrentStep(4);
+    } catch {
+      setError("Unable to reach server. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Step 4 — verify OTP + create account (auto-login via cookie)
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    if (!otp.trim()) {
+      setError("Please enter the verification code sent to your email.");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const { ok, body } = await apiPost<{ name: string }>(
+        "/api/auth/customer/signup/verify",
+        {
+          email: formData.email.trim(),
+          otp: otp.trim(),
+          name: formData.fullName.trim(),
+          phone: formData.phone.trim(),
+          password: formData.password,
+          companyName: formData.companyName.trim(),
+          gstNumber: formData.gstNumber.trim(),
+          regNo: formData.registrationNo.trim(),
           model: formData.model.trim(),
           purchaseDate: formData.purchaseDate,
-        },
-      };
-
-      sessionStorage.setItem("customerUser", JSON.stringify(customerRecord));
-      sessionStorage.setItem("customerName", customerRecord.name);
-
-      router.push("/customer/login");
+        }
+      );
+      if (!ok) {
+        setError(body?.message ?? "Could not verify code. Please try again.");
+        return;
+      }
+      if (body?.data?.name) sessionStorage.setItem("customerName", body.data.name);
+      router.push("/customer");
     } catch {
-      setError("An unexpected error occurred. Please try again.");
+      setError("Unable to reach server. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    setError(null);
+    setLoading(true);
+    try {
+      const { ok, body } = await apiPost<unknown>("/api/auth/customer/signup/request", {
+        name: formData.fullName.trim(),
+        phone: formData.phone.trim(),
+        email: formData.email.trim(),
+      });
+      if (!ok) {
+        setError(body?.message ?? "Could not resend code. Please try again.");
+        return;
+      }
+      setOtp("");
+    } catch {
+      setError("Unable to reach server. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -158,11 +216,12 @@ export function CustomerSignup() {
             {/* Header */}
             <div className="text-center mb-6">
               <h2 className="text-3xl font-bold text-gray-900 mb-1.5">Create Account</h2>
-              <p className="text-sm text-gray-500">
-                {currentStep === 1 && "Step 1 of 3: Your Personal Details"}
-                {currentStep === 2 && "Step 2 of 3: Company & Golf Cart"}
-                {currentStep === 3 && "Step 3 of 3: Vehicle Specs & Password"}
-              </p>
+                <p className="text-sm text-gray-500">
+                  {currentStep === 1 && "Step 1 of 3: Your Personal Details"}
+                  {currentStep === 2 && "Step 2 of 3: Company & Golf Cart"}
+                  {currentStep === 3 && "Step 3 of 3: Vehicle Specs & Password"}
+                  {currentStep === 4 && "Step 4 of 4: Verify Your Email"}
+                </p>
 
               {/* Step Progress Dots / Bars */}
               <div className="flex items-center justify-center gap-2 mt-4">
@@ -185,6 +244,15 @@ export function CustomerSignup() {
                 <div
                   className={`h-1.5 rounded-full transition-all duration-300 ${
                     currentStep === 3
+                      ? "w-8 bg-[#6366F1]"
+                      : currentStep > 3
+                      ? "w-5 bg-indigo-200"
+                      : "w-5 bg-gray-200"
+                  }`}
+                />
+                <div
+                  className={`h-1.5 rounded-full transition-all duration-300 ${
+                    currentStep === 4
                       ? "w-8 bg-[#6366F1]"
                       : "w-5 bg-gray-200"
                   }`}
@@ -411,13 +479,69 @@ export function CustomerSignup() {
                     disabled={loading}
                     className="flex-1 py-3.5 rounded-lg bg-[#6366F1] hover:bg-[#4F46E5] active:bg-[#4338CA] disabled:opacity-60 text-white font-bold text-sm sm:text-base transition-colors duration-200 shadow-md shadow-[#6366F1]/20 cursor-pointer"
                   >
-                    {loading ? "Creating..." : "Create account"}
+                    {loading ? "Sending..." : "Send verification code"}
                   </button>
                 </div>
 
                 <p className="text-[11px] text-slate-400 text-center pt-1 leading-relaxed">
                   You can add more vehicles to your account later from &quot;My Vehicles.&quot;
                 </p>
+              </form>
+            )}
+
+            {/* ================= STEP 4 (EMAIL OTP VERIFICATION) ================= */}
+            {currentStep === 4 && (
+              <form onSubmit={handleVerifyOtp} className="space-y-4">
+                <span className="block text-[11px] font-bold tracking-wider text-slate-500 uppercase">
+                  VERIFY YOUR EMAIL
+                </span>
+
+                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                  We sent a 6-digit code to{" "}
+                  <span className="font-semibold text-slate-900">{formData.email}</span>.
+                  Enter it below to finish creating your account.
+                </p>
+
+                <div>
+                  <label className="block text-xs sm:text-sm font-semibold text-slate-800 mb-1.5">
+                    Verification code
+                  </label>
+                  <input
+                    type="text"
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value)}
+                    placeholder="Enter 6-digit code"
+                    maxLength={6}
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 bg-[#FCFCFD] text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#6366F1] focus:ring-1 focus:ring-[#6366F1] transition-all tracking-widest text-center font-mono font-bold"
+                    required
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-3.5 rounded-lg bg-[#6366F1] hover:bg-[#4F46E5] active:bg-[#4338CA] disabled:opacity-60 text-white font-bold text-sm sm:text-base transition-colors duration-200 shadow-md shadow-[#6366F1]/20 cursor-pointer"
+                >
+                  {loading ? "Verifying..." : "Verify & create account"}
+                </button>
+
+                <div className="flex items-center justify-between pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentStep(3)}
+                    className="text-xs text-gray-500 hover:text-[#6366F1] font-medium"
+                  >
+                    ← Back
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleResendOtp}
+                    disabled={loading}
+                    className="text-xs text-[#6366F1] hover:underline font-semibold disabled:opacity-60"
+                  >
+                    Resend code
+                  </button>
+                </div>
               </form>
             )}
 

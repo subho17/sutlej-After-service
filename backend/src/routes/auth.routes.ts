@@ -2,6 +2,7 @@ import { Router } from "express";
 import { asyncHandler } from "../middleware/asyncHandler.js";
 import { requireAuth } from "../middleware/auth.js";
 import * as authController from "../controllers/auth.controller.js";
+import * as signupController from "../controllers/signup.controller.js";
 import * as passwordResetController from "../controllers/passwordReset.controller.js";
 
 const router = Router();
@@ -11,6 +12,16 @@ router.post("/staff/login", asyncHandler(authController.staffLogin));
 router.post("/customer/login", asyncHandler(authController.customerLogin));
 router.post("/logout", asyncHandler(authController.logout));
 router.get("/me", requireAuth, asyncHandler(authController.me));
+
+// Customer signup with Gmail OTP verification (creates account + vehicle)
+router.post(
+  "/customer/signup/request",
+  asyncHandler(signupController.requestSignupOtp)
+);
+router.post(
+  "/customer/signup/verify",
+  asyncHandler(signupController.verifySignup)
+);
 
 // Customer password recovery via Gmail OTP (code goes to customer's email)
 router.post(
