@@ -1,6 +1,7 @@
 import "dotenv/config";
 import dns from "node:dns";
 import { assertEnv, env } from "./config/env.js";
+import { logMailConfig } from "./utils/mailer.js";
 import { createApp } from "./app.js";
 
 // Render (and similar hosts) have no IPv6 egress: smtp.gmail.com often
@@ -11,6 +12,7 @@ dns.setDefaultResultOrder("ipv4first");
 async function main() {
   // Fail fast: Supabase is the live database.
   assertEnv();
+  logMailConfig();
 
   const app = createApp();
 

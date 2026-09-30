@@ -35,6 +35,20 @@ export function isMailConfigured(): boolean {
   return Boolean(env.BREVO_API_KEY || (env.SMTP_USER && env.SMTP_PASS));
 }
 
+// Safe diagnostic: length + last 4 chars only (never log the key itself).
+// Compare with Brevo → SMTP & API → API Keys to spot a bad paste.
+export function logMailConfig(): void {
+  if (env.BREVO_API_KEY) {
+    console.log(
+      `[backend] mail provider: brevo (key length ${env.BREVO_API_KEY.length}, ends …${env.BREVO_API_KEY.slice(-4)})`
+    );
+  } else if (env.SMTP_USER && env.SMTP_PASS) {
+    console.log(`[backend] mail provider: smtp (${env.SMTP_HOST}:${env.SMTP_PORT})`);
+  } else {
+    console.log("[backend] mail provider: none (OTP emails will fail)");
+  }
+}
+
 function parseSender(): { name: string; email: string } {
   const match = env.SMTP_FROM.match(/^(.*)<([^>]+)>$/);
   if (match) return { name: match[1].trim() || "Sutlej Automotives", email: match[2].trim() };
