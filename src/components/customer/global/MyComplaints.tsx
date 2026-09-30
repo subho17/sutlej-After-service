@@ -13,7 +13,7 @@ export interface CustomerComplaint {
   category: string;
   model: string;
   phone: string;
-  status: "open" | "in-progress" | "resolved" | "closed";
+  status: "pending" | "open" | "in-progress" | "resolved" | "closed";
   priority: string;
 }
 
@@ -118,6 +118,12 @@ export function MyComplaints({
 
   const getStatusBadge = (status: string) => {
     switch (status.toLowerCase()) {
+      case "pending":
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200/50">
+            Pending
+          </span>
+        );
       case "open":
         return (
           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#FEE2E2] text-[#DC2626] border border-rose-200/50">
@@ -137,6 +143,12 @@ export function MyComplaints({
             Resolved
           </span>
         );
+      case "closed":
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-200 text-slate-700 border border-slate-300/60">
+            Closed
+          </span>
+        );
       default:
         return (
           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200/50">
@@ -148,6 +160,8 @@ export function MyComplaints({
 
   const getAccentColor = (status: string) => {
     switch (status.toLowerCase()) {
+      case "pending":
+        return "bg-amber-500";
       case "open":
         return "bg-[#DC2626]";
       case "in progress":

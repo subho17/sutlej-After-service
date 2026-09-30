@@ -79,6 +79,7 @@ export function RaiseComplaint({
   const [category, setCategory] = useState("Engine / Motor issue");
   const [priority, setPriority] = useState("Medium");
   const [description, setDescription] = useState("");
+  const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -121,11 +122,13 @@ export function RaiseComplaint({
         date: formattedDate,
         source: "Raised by customer",
         customerName,
+        email: email.trim() || undefined,
         vehicleRegistrationNo: currentVehicle.registrationNo,
         model: currentVehicle.model,
         category,
         priority,
-        status: "Open" as const,
+        // New customer complaints await staff acceptance.
+        status: "pending" as const,
         phone: "9163399882",
         description: description.trim(),
         createdAt: new Date().toISOString(),
@@ -350,6 +353,25 @@ export function RaiseComplaint({
                 placeholder="Tell us what's wrong..."
                 rows={4}
                 className="w-full bg-[#FBFBFC] border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#E8A33D]/40 focus:border-[#E8A33D] transition-colors resize-y min-h-[100px]"
+              />
+            </div>
+
+            {/* Field: Email for status updates (optional) */}
+            <div>
+              <label
+                htmlFor="emailInput"
+                className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5"
+              >
+                Email for updates{" "}
+                <span className="font-normal text-gray-400 text-xs">(optional)</span>
+              </label>
+              <input
+                id="emailInput"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@gmail.com"
+                className="w-full bg-[#FBFBFC] border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#E8A33D]/40 focus:border-[#E8A33D] transition-colors"
               />
             </div>
 

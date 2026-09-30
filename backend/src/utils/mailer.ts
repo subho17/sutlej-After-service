@@ -62,3 +62,25 @@ export async function sendOtpEmail(to: string, otp: string, name: string): Promi
   });
 }
 
+/** Generic staff email (e.g. complaint status updates). */
+export async function sendStaffEmail(to: string, subject: string, text: string): Promise<void> {
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto;">
+      <h2 style="color: #111;">Sutlej Automotives</h2>
+      ${text
+        .split("\n")
+        .map((line) => (line.trim() ? `<p>${line}</p>` : "<br/>"))
+        .join("")}
+      <p style="color: #666; font-size: 13px;">Staff Service Desk, Sutlej Automotives.</p>
+    </div>
+  `;
+
+  await (await getTransporter()).sendMail({
+    from: env.SMTP_FROM,
+    to,
+    subject,
+    text,
+    html,
+  });
+}
+

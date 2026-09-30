@@ -5,7 +5,7 @@
 // customers (and vice versa). Everything now goes through load/save below,
 // which read + write ONE shared key and one-time migrate legacy keys.
 
-export type ComplaintStatus = "open" | "in-progress" | "resolved" | "closed";
+export type ComplaintStatus = "pending" | "open" | "in-progress" | "resolved" | "closed";
 
 export interface SharedComplaint {
   id: string;
@@ -13,6 +13,8 @@ export interface SharedComplaint {
   description: string;
   customerName: string;
   phoneNumber: string;
+  /** Customer email for status-update emails (optional). */
+  email?: string;
   vehicleRegistrationNo: string;
   model: string;
   category: string;
@@ -56,6 +58,7 @@ function readKey(key: string): RawComplaint[] {
 
 function canonicalStatus(value: unknown): ComplaintStatus {
   const v = String(value ?? "").trim().toLowerCase();
+  if (v === "pending" || v === "awaiting") return "pending";
   if (v === "in progress" || v === "in-progress") return "in-progress";
   if (v === "resolved") return "resolved";
   if (v === "closed") return "closed";
@@ -86,6 +89,7 @@ export function normalizeComplaint(raw: RawComplaint | SharedComplaint): SharedC
     description: str(raw.description),
     customerName: str(raw.customerName),
     phoneNumber: phone,
+    email: str(pick(raw, "email")) || undefined,
     vehicleRegistrationNo: vehicle,
     model: str(raw.model),
     category,

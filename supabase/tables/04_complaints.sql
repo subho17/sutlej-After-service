@@ -27,7 +27,7 @@ create table if not exists public.complaints (
   priority          text        not null default 'Medium'
                     check (priority in ('Low', 'Medium', 'High', 'Critical')),
   status            text        not null default 'open'
-                    check (status in ('open', 'in-progress', 'resolved', 'closed')),
+                    check (status in ('pending', 'open', 'in-progress', 'resolved', 'closed')),
   history           jsonb       not null default '[]',  -- audit trail of status moves
   created_by        text,                      -- free-text author (legacy)
   created_at        timestamptz not null default now(),
@@ -45,10 +45,10 @@ alter table public.complaints add column if not exists category text;
 alter table public.complaints add column if not exists priority text not null default 'Medium';
 alter table public.complaints add column if not exists history jsonb not null default '[]';
 
--- Widen the old status check to include 'closed'.
+-- Widen the old status check to include 'pending' and 'closed'.
 alter table public.complaints drop constraint if exists complaints_status_check;
 alter table public.complaints add constraint complaints_status_check
-  check (status in ('open', 'in-progress', 'resolved', 'closed'));
+  check (status in ('pending', 'open', 'in-progress', 'resolved', 'closed'));
 
 -- Complaint lookups: by customer, vehicle, assignee, status.
 create index if not exists idx_complaints_customer on public.complaints (customer_id);

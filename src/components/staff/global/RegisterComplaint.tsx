@@ -13,6 +13,7 @@ export interface RegisterComplaintFormData {
   registeredCustomer: string;
   customerName: string;
   phoneNumber: string;
+  email: string;
   vehicleRegistrationNo: string;
   model: string;
   category: string;
@@ -39,6 +40,7 @@ export function RegisterComplaint() {
     registeredCustomer: "Walk-in / not registered",
     customerName: "",
     phoneNumber: "",
+    email: "",
     vehicleRegistrationNo: "",
     model: "",
     category: "Engine / Motor issue",
@@ -90,6 +92,7 @@ export function RegisterComplaint() {
         description: formData.details.trim(),
         customerName: formData.customerName.trim(),
         phoneNumber: formData.phoneNumber.trim(),
+        email: formData.email.trim() || undefined,
         vehicleRegistrationNo: formData.vehicleRegistrationNo.trim().toUpperCase(),
         model: formData.model.trim() || "Club Car",
         category: formData.category,
@@ -229,6 +232,22 @@ export function RegisterComplaint() {
                   required
                 />
               </div>
+            </div>
+
+            {/* Customer email (optional, for status-update emails) */}
+            <div>
+              <label className="block text-xs sm:text-sm font-semibold text-slate-800 mb-1.5">
+                Customer email{" "}
+                <span className="font-normal text-slate-400 text-xs">(optional, for email updates)</span>
+              </label>
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="e.g. customer@gmail.com"
+                className="w-full px-3.5 py-2.5 rounded-md border border-slate-200 bg-[#FCFCFD] text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#6366F1] focus:ring-1 focus:ring-[#6366F1] transition-all"
+              />
             </div>
 
             {/* Row: Vehicle registration no. & Model */}

@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { EmptyStateCard } from "./EmptyStateCard";
 import { COMPLAINT_CATEGORIES } from "./RegisterComplaint";
 import { CustomSelect } from "./CustomSelect";
+import { apiPost } from "@/lib/api";
 import {
   loadComplaints as loadSharedComplaints,
   saveComplaints as persistSharedComplaints,
@@ -16,6 +17,7 @@ import {
 export type ComplaintItem = SharedComplaint;
 
 const STATUS_OPTIONS: { value: ComplaintStatus; label: string }[] = [
+  { value: "pending", label: "Pending" },
   { value: "open", label: "Open" },
   { value: "in-progress", label: "In progress" },
   { value: "resolved", label: "Resolved" },
@@ -37,6 +39,8 @@ export function complaintStatusEmail(item: SharedComplaint): { subject: string; 
     ``,
     item.status === "resolved" || item.status === "closed"
       ? `Our team has completed the work. Please reply to this email if anything still needs attention.`
+      : item.status === "pending"
+      ? `We have received your request and our team will accept it shortly. We will notify you when the status changes.`
       : `Our team is working on it. We will notify you when the status changes.`,
     ``,
     `Thank you for choosing Sutlej Automotives.`,
@@ -45,15 +49,62 @@ export function complaintStatusEmail(item: SharedComplaint): { subject: string; 
   return { subject, body };
 }
 
-/** Formal status-update email draft (opens the staff mail app). */
-function EmailComplaintButton({ item }: { item: SharedComplaint }) {
+/** Formal status-update email draft for the customer. */
+function mailtoDraft(item: SharedComplaint): string {
   const { subject, body } = complaintStatusEmail(item);
-  const href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  const to = item.email ?? "";
+  return `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+
+/**
+ * Email button: auto-sends the formal update through the backend when the
+ * complaint has an email address (falls back to a mail-app draft otherwise,
+ * e.g. when the API is unreachable or no address is on file).
+ */
+function EmailComplaintButton({ item }: { item: SharedComplaint }) {
+  const [state, setState] = useState<"idle" | "sending" | "sent" | "draft">("idle");
+
+  const openDraft = () => {
+    window.location.href = mailtoDraft(item);
+    setState("draft");
+  };
+
+  const handleClick = async () => {
+    if (!item.email) {
+      openDraft();
+      return;
+    }
+    setState("sending");
+    try {
+      const { subject, body } = complaintStatusEmail(item);
+      const { ok } = await apiPost<unknown>("/api/complaints/notify", {
+        to: item.email,
+        subject,
+        message: body,
+      });
+      if (!ok) throw new Error("send failed");
+      setState("sent");
+    } catch {
+      // Backend unreachable or mail service down: staff can still send manually.
+      openDraft();
+    }
+  };
+
   return (
-    <a
-      href={href}
-      title="Email status update to customer"
-      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-slate-200 hover:border-[#E8A33D] text-slate-600 hover:text-[#8C5209] text-xs font-semibold transition-colors whitespace-nowrap cursor-pointer"
+    <button
+      type="button"
+      onClick={handleClick}
+      disabled={state === "sending"}
+      title={
+        item.email
+          ? `Email status update to ${item.email}`
+          : "No email on file — opens a draft instead"
+      }
+      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-xs font-semibold transition-colors whitespace-nowrap cursor-pointer disabled:opacity-60 ${
+        state === "sent"
+          ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+          : "border-slate-200 hover:border-[#E8A33D] text-slate-600 hover:text-[#8C5209]"
+      }`}
     >
       <svg
         className="w-3.5 h-3.5"
@@ -67,8 +118,8 @@ function EmailComplaintButton({ item }: { item: SharedComplaint }) {
         <rect x="2" y="4" width="20" height="16" rx="2" />
         <path d="m22 7-10 6L2 7" />
       </svg>
-      Email
-    </a>
+      {state === "sending" ? "Sending..." : state === "sent" ? "Sent ✓" : state === "draft" ? "Draft opened" : "Email"}
+    </button>
   );
 }
 
@@ -136,13 +187,14 @@ export function AllComplaints() {
             <CustomSelect
               value={statusFilter}
               onChange={setStatusFilter}
-              options={[
-                { value: "all", label: "All statuses" },
-                { value: "open", label: "Open", dotColor: "amber" },
-                { value: "in-progress", label: "In progress", dotColor: "sky" },
-                { value: "resolved", label: "Resolved", dotColor: "emerald" },
-                { value: "closed", label: "Closed", dotColor: "slate" },
-              ]}
+                options={[
+                  { value: "all", label: "All statuses" },
+                  { value: "pending", label: "Pending", dotColor: "amber" },
+                  { value: "open", label: "Open", dotColor: "rose" },
+                  { value: "in-progress", label: "In progress", dotColor: "sky" },
+                  { value: "resolved", label: "Resolved", dotColor: "emerald" },
+                  { value: "closed", label: "Closed", dotColor: "slate" },
+                ]}
               size="md"
               className="w-full"
             />
@@ -225,11 +277,15 @@ export function AllComplaints() {
                       <td className="py-3.5 px-4 text-xs font-semibold">
                         <span
                           className={`px-2 py-0.5 rounded-full text-[11px] capitalize ${
-                            item.status === "open"
+                            item.status === "pending"
+                              ? "bg-amber-50 text-amber-700 border border-amber-200"
+                              : item.status === "open"
                               ? "bg-red-50 text-red-700 border border-red-200"
                               : item.status === "in-progress"
-                              ? "bg-amber-50 text-amber-700 border border-amber-200"
-                              : "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                              ? "bg-sky-50 text-sky-700 border border-sky-200"
+                              : item.status === "resolved"
+                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                              : "bg-slate-100 text-slate-700 border border-slate-200"
                           }`}
                         >
                           {item.status}
@@ -240,20 +296,22 @@ export function AllComplaints() {
                       </td>
                       <td className="py-3.5 px-4">
                         <div className="flex items-center justify-end gap-2">
-                          <div className="w-36">
-                            <CustomSelect
-                              value={item.status}
-                              onChange={(val) =>
-                                handleStatusChange(item.id, val as ComplaintStatus)
-                              }
-                              options={STATUS_OPTIONS.map((s) => ({
-                                value: s.value,
-                                label: s.label,
-                              }))}
-                              size="sm"
-                              className="w-full"
-                            />
-                          </div>
+                          {/* Native select: custom dropdown menus get clipped
+                              by the table's horizontal scroll container. */}
+                          <select
+                            value={item.status}
+                            onChange={(e) =>
+                              handleStatusChange(item.id, e.target.value as ComplaintStatus)
+                            }
+                            aria-label={`Update status of ${item.id}`}
+                            className="px-2.5 py-1.5 rounded-md border border-slate-200 bg-white text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#E8A33D] focus:ring-2 focus:ring-[#E8A33D]/25 cursor-pointer capitalize"
+                          >
+                            {STATUS_OPTIONS.map((s) => (
+                              <option key={s.value} value={s.value}>
+                                {s.label}
+                              </option>
+                            ))}
+                          </select>
                           <EmailComplaintButton item={item} />
                         </div>
                       </td>
@@ -277,11 +335,15 @@ export function AllComplaints() {
                     </span>
                     <span
                       className={`px-2 py-0.5 rounded-full text-[11px] font-semibold capitalize whitespace-nowrap ${
-                        item.status === "open"
+                        item.status === "pending"
+                          ? "bg-amber-50 text-amber-700 border border-amber-200"
+                          : item.status === "open"
                           ? "bg-red-50 text-red-700 border border-red-200"
                           : item.status === "in-progress"
-                          ? "bg-amber-50 text-amber-700 border border-amber-200"
-                          : "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                          ? "bg-sky-50 text-sky-700 border border-sky-200"
+                          : item.status === "resolved"
+                          ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                          : "bg-slate-100 text-slate-700 border border-slate-200"
                       }`}
                     >
                       {item.status}
@@ -322,20 +384,20 @@ export function AllComplaints() {
                   </div>
 
                   <div className="flex items-center gap-2 pt-1">
-                    <div className="flex-1">
-                      <CustomSelect
-                        value={item.status}
-                        onChange={(val) =>
-                          handleStatusChange(item.id, val as ComplaintStatus)
-                        }
-                        options={STATUS_OPTIONS.map((s) => ({
-                          value: s.value,
-                          label: s.label,
-                        }))}
-                        size="sm"
-                        className="w-full"
-                      />
-                    </div>
+                    <select
+                      value={item.status}
+                      onChange={(e) =>
+                        handleStatusChange(item.id, e.target.value as ComplaintStatus)
+                      }
+                      aria-label={`Update status of ${item.id}`}
+                      className="flex-1 px-2.5 py-2 rounded-md border border-slate-200 bg-white text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#E8A33D] focus:ring-2 focus:ring-[#E8A33D]/25 cursor-pointer capitalize"
+                    >
+                      {STATUS_OPTIONS.map((s) => (
+                        <option key={s.value} value={s.value}>
+                          {s.label}
+                        </option>
+                      ))}
+                    </select>
                     <EmailComplaintButton item={item} />
                   </div>
                 </div>

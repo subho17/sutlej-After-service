@@ -29,7 +29,7 @@ export interface ComplaintRow {
   id: string;
   title: string;
   description: string;
-  status: "open" | "in-progress" | "resolved";
+  status: "pending" | "open" | "in-progress" | "resolved";
   created_by: string | null;
   created_at: string;
   updated_at: string;
