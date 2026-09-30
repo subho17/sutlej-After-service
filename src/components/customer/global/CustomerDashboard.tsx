@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState, useSyncExternalStore } from "react";
+import React, { useEffect, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { EmptyStateCard } from "./EmptyStateCard";
-import { loadAnnouncements, type Announcement } from "@/lib/announcementsStore";
+import { loadAnnouncements, subscribeAnnouncements, type Announcement } from "@/lib/announcementsStore";
 
 function subscribe(callback: () => void) {
   if (typeof window === "undefined") return () => {};
@@ -45,7 +45,14 @@ export function CustomerDashboard({
   const storedName = useSyncExternalStore(subscribe, getStoredCustomerName, () => "");
   const displayName = initialCustomerName || storedName || "Aditi";
   // Shared store: announcements published by staff appear here.
-  const [announcements] = useState<Announcement[]>(loadAnnouncements);
+  const [announcements, setAnnouncements] = useState<Announcement[]>(loadAnnouncements);
+
+  // Live sync: new staff posts appear instantly, no refresh needed.
+  useEffect(
+    () => subscribeAnnouncements(() => setAnnouncements(loadAnnouncements())),
+    []
+  );
+
   const liveAnnouncements = announcements.filter((a) => a.active !== false);
 
   return (

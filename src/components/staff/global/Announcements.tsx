@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   loadAnnouncements as loadSharedAnnouncements,
   saveAnnouncements as persistSharedAnnouncements,
+  subscribeAnnouncements,
   type Announcement,
 } from "@/lib/announcementsStore";
 
@@ -16,6 +17,12 @@ export function Announcements() {
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Shared store: staff + portal stay in sync live, no refresh needed.
+  useEffect(
+    () => subscribeAnnouncements(() => setAnnouncements(loadSharedAnnouncements())),
+    []
+  );
 
   const saveAnnouncements = (updated: Announcement[]) => {
     setAnnouncements(updated);

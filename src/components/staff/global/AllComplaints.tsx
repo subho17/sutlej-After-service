@@ -1,41 +1,96 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { EmptyStateCard } from "./EmptyStateCard";
 import { COMPLAINT_CATEGORIES } from "./RegisterComplaint";
 import { CustomSelect } from "./CustomSelect";
+import {
+  loadComplaints as loadSharedComplaints,
+  saveComplaints as persistSharedComplaints,
+  subscribeComplaints,
+  type ComplaintStatus,
+  type SharedComplaint,
+} from "@/lib/complaintsStore";
 
-export interface ComplaintItem {
-  id: string;
-  title: string;
-  description: string;
-  customerName: string;
-  phoneNumber: string;
-  vehicleRegistrationNo: string;
-  model?: string;
-  category: string;
-  priority: string;
-  status: "open" | "in-progress" | "resolved" | "closed";
-  createdAt: string;
+// Kept for compatibility (same shape as the shared store type).
+export type ComplaintItem = SharedComplaint;
+
+const STATUS_OPTIONS: { value: ComplaintStatus; label: string }[] = [
+  { value: "open", label: "Open" },
+  { value: "in-progress", label: "In progress" },
+  { value: "resolved", label: "Resolved" },
+  { value: "closed", label: "Closed" },
+];
+
+/** Formal status-update email draft for the customer (opens in mail app). */
+export function complaintStatusEmail(item: SharedComplaint): { subject: string; body: string } {
+  const subject = `Your complaint ${item.id} — ${item.status}`;
+  const body = [
+    `Dear ${item.customerName || "Customer"},`,
+    ``,
+    `This is an update from Sutlej Automotives regarding your service request.`,
+    ``,
+    `Complaint ID : ${item.id}`,
+    `Vehicle      : ${item.vehicleRegistrationNo}${item.model ? ` (${item.model})` : ""}`,
+    `Category     : ${item.category}`,
+    `Status       : ${item.status}`,
+    ``,
+    item.status === "resolved" || item.status === "closed"
+      ? `Our team has completed the work. Please reply to this email if anything still needs attention.`
+      : `Our team is working on it. We will notify you when the status changes.`,
+    ``,
+    `Thank you for choosing Sutlej Automotives.`,
+    `Staff Service Desk`,
+  ].join("\n");
+  return { subject, body };
 }
 
-function loadComplaints(): ComplaintItem[] {
-  if (typeof window === "undefined") return [];
-  try {
-    // Loaded from localStorage (populated by RegisterComplaint)
-    const stored = localStorage.getItem("staffComplaints");
-    return stored ? (JSON.parse(stored) as ComplaintItem[]) : [];
-  } catch {
-    // Fallback empty
-    return [];
-  }
+/** Formal status-update email draft (opens the staff mail app). */
+function EmailComplaintButton({ item }: { item: SharedComplaint }) {
+  const { subject, body } = complaintStatusEmail(item);
+  const href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  return (
+    <a
+      href={href}
+      title="Email status update to customer"
+      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-slate-200 hover:border-[#E8A33D] text-slate-600 hover:text-[#8C5209] text-xs font-semibold transition-colors whitespace-nowrap cursor-pointer"
+    >
+      <svg
+        className="w-3.5 h-3.5"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <rect x="2" y="4" width="20" height="16" rx="2" />
+        <path d="m22 7-10 6L2 7" />
+      </svg>
+      Email
+    </a>
+  );
 }
 
 export function AllComplaints() {
-  const [complaints] = useState<ComplaintItem[]>(loadComplaints);
+  // Shared store: status edits here appear in the customer portal too,
+  // and new complaints arrive live without refresh.
+  const [complaints, setComplaints] = useState<SharedComplaint[]>(loadSharedComplaints);
+
+  useEffect(
+    () => subscribeComplaints(() => setComplaints(loadSharedComplaints())),
+    []
+  );
+
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
+
+  const handleStatusChange = (id: string, status: ComplaintStatus) => {
+    const updated = complaints.map((c) => (c.id === id ? { ...c, status } : c));
+    setComplaints(updated);
+    persistSharedComplaints(updated);
+  };
 
   // Filter complaints
   const filteredComplaints = complaints.filter((item) => {
@@ -135,6 +190,7 @@ export function AllComplaints() {
                     <th className="py-3.5 px-4">Priority</th>
                     <th className="py-3.5 px-4">Status</th>
                     <th className="py-3.5 px-4">Date</th>
+                    <th className="py-3.5 px-4 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -181,6 +237,25 @@ export function AllComplaints() {
                       </td>
                       <td className="py-3.5 px-4 text-xs text-slate-400">
                         {new Date(item.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-center justify-end gap-2">
+                          <div className="w-36">
+                            <CustomSelect
+                              value={item.status}
+                              onChange={(val) =>
+                                handleStatusChange(item.id, val as ComplaintStatus)
+                              }
+                              options={STATUS_OPTIONS.map((s) => ({
+                                value: s.value,
+                                label: s.label,
+                              }))}
+                              size="sm"
+                              className="w-full"
+                            />
+                          </div>
+                          <EmailComplaintButton item={item} />
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -244,6 +319,24 @@ export function AllComplaints() {
                     >
                       {item.priority}
                     </span>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-1">
+                    <div className="flex-1">
+                      <CustomSelect
+                        value={item.status}
+                        onChange={(val) =>
+                          handleStatusChange(item.id, val as ComplaintStatus)
+                        }
+                        options={STATUS_OPTIONS.map((s) => ({
+                          value: s.value,
+                          label: s.label,
+                        }))}
+                        size="sm"
+                        className="w-full"
+                      />
+                    </div>
+                    <EmailComplaintButton item={item} />
                   </div>
                 </div>
               ))}

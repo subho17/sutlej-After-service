@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { EmptyStateCard } from "./EmptyStateCard";
+import { loadComplaints, subscribeComplaints } from "@/lib/complaintsStore";
 
 export interface CustomerComplaint {
   id: string;
@@ -12,26 +13,42 @@ export interface CustomerComplaint {
   category: string;
   model: string;
   phone: string;
-  status: "Open" | "In progress" | "Resolved" | "Closed";
+  status: "open" | "in-progress" | "resolved" | "closed";
   priority: string;
 }
 
 const DEFAULT_COMPLAINTS: CustomerComplaint[] = [
   {
     id: "SA-2026-0001",
-    date: "27 Sept 2026",
+    date: "27 Sep 2026",
     source: "Raised by customer",
     customerName: "Aditi",
     vehicleRegistrationNo: "PB-10-GC-PT",
     category: "Engine / Motor issue",
     model: "club car tempo",
     phone: "9163399882",
-    status: "Open",
+    status: "open",
     priority: "Medium",
   },
 ];
 
 function getInitialComplaints(fallback: CustomerComplaint[]): CustomerComplaint[] {
+  // Shared store: staff status updates appear here (live-synced below).
+  const shared = loadComplaints();
+  if (shared.length > 0) {
+    return shared.map((c) => ({
+      id: c.id,
+      date: c.date,
+      source: c.source ?? "Raised by customer",
+      customerName: c.customerName,
+      vehicleRegistrationNo: c.vehicleRegistrationNo,
+      category: c.category,
+      model: c.model,
+      phone: c.phoneNumber,
+      status: c.status,
+      priority: c.priority,
+    }));
+  }
   if (typeof window === "undefined") return fallback;
   try {
     const saved = localStorage.getItem("sutlej_customer_complaints");
@@ -64,13 +81,23 @@ export function MyComplaints({
   initialComplaints,
   className = "",
 }: MyComplaintsProps) {
-  const [complaints] = useState<CustomerComplaint[]>(() => {
+  const [complaints, setComplaints] = useState<CustomerComplaint[]>(() => {
     const fallback =
       initialComplaints && initialComplaints.length > 0
         ? initialComplaints
         : DEFAULT_COMPLAINTS;
     return getInitialComplaints(fallback);
   });
+
+  // Live sync: staff status updates appear instantly, no refresh needed.
+  useEffect(() => {
+    const defaults =
+      initialComplaints && initialComplaints.length > 0
+        ? initialComplaints
+        : DEFAULT_COMPLAINTS;
+    return subscribeComplaints(() => setComplaints(getInitialComplaints(defaults)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [toastMessage, setToastMessage] = useState<string | null>(() => {
     if (typeof window === "undefined") return null;

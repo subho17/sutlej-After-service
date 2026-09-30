@@ -3,6 +3,11 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CustomSelect } from "./CustomSelect";
+import {
+  loadComplaints,
+  normalizeComplaint,
+  saveComplaints,
+} from "@/lib/complaintsStore";
 
 export interface RegisterComplaintFormData {
   registeredCustomer: string;
@@ -89,13 +94,19 @@ export function RegisterComplaint() {
         model: formData.model.trim() || "Club Car",
         category: formData.category,
         priority: formData.priority,
-        status: "open",
+        status: "open" as const,
         createdAt: new Date().toISOString(),
       };
 
-      // Store in localStorage / sessionStorage for state persistence across views
-      const existing = JSON.parse(localStorage.getItem("staffComplaints") || "[]");
-      localStorage.setItem("staffComplaints", JSON.stringify([newComplaint, ...existing]));
+      // Store in the shared complaints store (visible in customer portal too)
+      saveComplaints([
+        normalizeComplaint({
+          ...newComplaint,
+          createdAt: new Date().toISOString(),
+          date: new Date().toISOString(),
+        }),
+        ...loadComplaints().filter((c) => c.id !== newComplaint.id),
+      ]);
 
       setSuccess("Complaint registered successfully! Redirecting...");
 

@@ -135,3 +135,25 @@ function persist(orders: SharedOrder[]): void {
 export function saveOrders(orders: SharedOrder[]): void {
   persist(orders.map(normalizeOrder));
 }
+
+type Listener = () => void;
+
+/**
+ * Cross-tab live sync: fires in every OTHER open tab when this tab saves,
+ * so the other portal updates instantly without refresh.
+ * (Same-tab updates already happen via setState on save.)
+ */
+export function subscribeOrders(listener: Listener): () => void {
+  if (typeof window === "undefined") return () => {};
+  const handler = (e: StorageEvent) => {
+    if (
+      e.key === null ||
+      e.key === SHARED_KEY ||
+      (LEGACY_KEYS as readonly string[]).includes(e.key)
+    ) {
+      listener();
+    }
+  };
+  window.addEventListener("storage", handler);
+  return () => window.removeEventListener("storage", handler);
+}

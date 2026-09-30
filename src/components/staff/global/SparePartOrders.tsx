@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { CustomSelect } from "./CustomSelect";
 import {
   loadOrders as loadSharedOrders,
   saveOrders as persistSharedOrders,
+  subscribeOrders,
   type SharedOrder,
 } from "@/lib/ordersStore";
 
@@ -34,6 +35,9 @@ export interface SparePartOrder {
 export function SparePartOrders() {
   // Shared store: status updates here are visible in the customer portal too.
   const [orders, setOrders] = useState<SharedOrder[]>(loadSharedOrders);
+  // Shared store: customer orders arrive live, no refresh needed.
+  useEffect(() => subscribeOrders(() => setOrders(loadSharedOrders())), []);
+
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedOrder, setSelectedOrder] = useState<SharedOrder | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);

@@ -82,3 +82,25 @@ function persist(items: Announcement[]): void {
 export function saveAnnouncements(items: Announcement[]): void {
   persist(items.map(normalizeAnnouncement));
 }
+
+type Listener = () => void;
+
+/**
+ * Cross-tab live sync: fires in every OTHER open tab when this tab saves,
+ * so the other portal updates instantly without refresh.
+ * (Same-tab updates already happen via setState on save.)
+ */
+export function subscribeAnnouncements(listener: Listener): () => void {
+  if (typeof window === "undefined") return () => {};
+  const handler = (e: StorageEvent) => {
+    if (
+      e.key === null ||
+      e.key === SHARED_KEY ||
+      (LEGACY_KEYS as readonly string[]).includes(e.key)
+    ) {
+      listener();
+    }
+  };
+  window.addEventListener("storage", handler);
+  return () => window.removeEventListener("storage", handler);
+}

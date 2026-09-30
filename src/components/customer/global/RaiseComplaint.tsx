@@ -2,6 +2,11 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
+import {
+  loadComplaints,
+  normalizeComplaint,
+  saveComplaints,
+} from "@/lib/complaintsStore";
 
 export interface VehicleOption {
   registrationNo: string;
@@ -101,18 +106,13 @@ export function RaiseComplaint({
           sessionStorage.getItem("customerName")) ||
         "Aditi";
 
-      const customerComplaints =
-        typeof window !== "undefined"
-          ? JSON.parse(localStorage.getItem("sutlej_customer_complaints") || "[]")
-          : [];
-
-      const count = customerComplaints.length + 1;
+      const count = loadComplaints().length + 1;
       const complaintId = `SA-2026-${String(count).padStart(4, "0")}`;
 
       const now = new Date();
       const months = [
         "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-        "Jul", "Aug", "Sept", "Oct", "Nov", "Dec",
+        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
       ];
       const formattedDate = `${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
 
@@ -125,30 +125,24 @@ export function RaiseComplaint({
         model: currentVehicle.model,
         category,
         priority,
-        status: "Open",
+        status: "Open" as const,
         phone: "9163399882",
         description: description.trim(),
         createdAt: new Date().toISOString(),
       };
 
-      // Save to customer complaints store
+      // Save to the shared complaints store (visible to staff immediately)
       if (typeof window !== "undefined") {
         try {
-          localStorage.setItem(
-            "sutlej_customer_complaints",
-            JSON.stringify([newComplaint, ...customerComplaints])
-          );
+          saveComplaints([
+            normalizeComplaint({
+              ...newComplaint,
+              phoneNumber: newComplaint.phone,
+            }),
+            ...loadComplaints().filter((c) => c.id !== complaintId),
+          ]);
 
           sessionStorage.setItem("lastSubmittedComplaint", complaintId);
-
-          // Also sync to staffComplaints so it appears on the staff dashboard
-          const staffComplaints = JSON.parse(
-            localStorage.getItem("staffComplaints") || "[]"
-          );
-          localStorage.setItem(
-            "staffComplaints",
-            JSON.stringify([newComplaint, ...staffComplaints])
-          );
         } catch {
           // Ignore storage errors
         }

@@ -89,11 +89,11 @@ export function CustomerNavbar({
       <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-[#E8A33D]/50 to-transparent pointer-events-none" />
 
       {/* Main Container */}
-      <div className="w-full px-4 sm:px-6 lg:px-8 h-16 sm:h-[70px] flex items-center justify-between gap-4">
+      <div className="w-full px-3 sm:px-6 lg:px-8 h-16 sm:h-[70px] flex items-center justify-between gap-2 sm:gap-4">
         {/* ================= LEFT: BRAND LOGO ================= */}
         <Link
           href="/customer"
-          className="flex items-center gap-3 group focus:outline-none shrink-0"
+          className="flex items-center gap-2 sm:gap-3 group focus:outline-none shrink-0 min-w-0"
         >
           {/* Amber Octagon / Gear Emblem */}
           <div className="relative w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center shrink-0 drop-shadow-[0_2px_8px_rgba(232,163,61,0.4)] group-hover:scale-105 transition-transform duration-200">
@@ -169,9 +169,9 @@ export function CustomerNavbar({
           </div>
 
           {/* Brand Name & Subtitle */}
-          <div className="flex flex-col leading-tight">
+          <div className="flex flex-col leading-tight min-w-0">
             <span
-              className="text-white font-extrabold text-sm sm:text-base tracking-wider uppercase group-hover:text-amber-300 transition-colors"
+              className="text-white font-extrabold text-xs sm:text-base tracking-wider uppercase group-hover:text-amber-300 transition-colors truncate"
               style={{
                 fontFamily:
                   "'Rajdhani', 'Orbitron', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
@@ -207,9 +207,9 @@ export function CustomerNavbar({
         </div>
 
         {/* ================= RIGHT: USER NAME & LOG OUT BUTTON ================= */}
-        <div className="flex items-center gap-3 sm:gap-4 shrink-0">
-          {/* User Name */}
-          <span className="text-xs sm:text-sm font-medium text-slate-200">
+        <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+          {/* User Name — hidden on very small phones to prevent overflow */}
+          <span className="hidden min-[420px]:block text-xs sm:text-sm font-medium text-slate-200 truncate max-w-[120px]">
             {displayName}
           </span>
 
@@ -217,7 +217,7 @@ export function CustomerNavbar({
           <button
             onClick={handleLogout}
             type="button"
-            className="text-xs sm:text-sm font-medium text-slate-200 hover:text-white px-3 sm:px-4 py-1.5 rounded-lg border border-slate-700/80 hover:border-slate-500 bg-transparent hover:bg-white/[0.05] transition-all duration-150 cursor-pointer shadow-sm active:scale-95"
+            className="text-xs sm:text-sm font-medium text-slate-200 hover:text-white px-2.5 sm:px-4 py-1.5 rounded-lg border border-slate-700/80 hover:border-slate-500 bg-transparent hover:bg-white/[0.05] transition-all duration-150 cursor-pointer shadow-sm active:scale-95 whitespace-nowrap"
           >
             Log out
           </button>

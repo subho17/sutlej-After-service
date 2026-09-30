@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { EmptyStateCard } from "./EmptyStateCard";
-import { loadOrders } from "@/lib/ordersStore";
+import { loadOrders, subscribeOrders } from "@/lib/ordersStore";
 
 export interface OrderItem {
   partId?: string;
@@ -54,10 +54,17 @@ export interface MyOrdersProps {
  * - Order cards with items breakdown, status pill, total amount, and receipt download
  */
 export function MyOrders({ initialOrders, className = "" }: MyOrdersProps) {
-  const [orders] = useState<CustomerOrder[]>(() => {
+  const [orders, setOrders] = useState<CustomerOrder[]>(() => {
     const fallback = initialOrders || [];
     return getInitialOrders(fallback);
   });
+
+  // Live sync: staff status updates appear instantly, no refresh needed.
+  useEffect(() => {
+    const fallback = initialOrders || [];
+    return subscribeOrders(() => setOrders(getInitialOrders(fallback)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
