@@ -4,8 +4,8 @@ import { env } from "../config/env.js";
 
 let transporter: Transporter | null = null;
 
-// Render has no IPv6 egress, but smtp.gmail.com often resolves to IPv6
-// first (ENETUNREACH). Resolve the SMTP host to IPv4 explicitly and
+// Some hosts have no IPv6 egress while smtp.gmail.com often resolves to
+// IPv6 first (ENETUNREACH). Resolve the SMTP host to IPv4 explicitly and
 // connect to the IP, keeping TLS verification against the real hostname.
 async function getTransporter(): Promise<Transporter> {
   if (!transporter) {
@@ -30,64 +30,16 @@ async function getTransporter(): Promise<Transporter> {
 }
 
 export function isMailConfigured(): boolean {
-  // Brevo HTTP API (works everywhere, incl. hosts that block SMTP ports),
-  // else plain SMTP (local dev with Gmail app password).
-  return Boolean(env.BREVO_API_KEY || (env.SMTP_USER && env.SMTP_PASS));
+  return Boolean(env.SMTP_USER && env.SMTP_PASS);
 }
 
-// Safe diagnostic: length + last 4 chars only (never log the key itself).
-// Compare with Brevo → SMTP & API → API Keys to spot a bad paste.
+// Safe diagnostic: only host/port/user (never log the password).
 export function logMailConfig(): void {
-  if (env.BREVO_API_KEY) {
-    console.log(
-      `[backend] mail provider: brevo (key length ${env.BREVO_API_KEY.length}, ends …${env.BREVO_API_KEY.slice(-4)})`
-    );
-  } else if (env.SMTP_USER && env.SMTP_PASS) {
-    console.log(`[backend] mail provider: smtp (${env.SMTP_HOST}:${env.SMTP_PORT})`);
+  if (env.SMTP_USER && env.SMTP_PASS) {
+    console.log(`[backend] mail provider: smtp (${env.SMTP_HOST}:${env.SMTP_PORT} as ${env.SMTP_USER})`);
   } else {
     console.log("[backend] mail provider: none (OTP emails will fail)");
   }
-}
-
-function parseSender(): { name: string; email: string } {
-  const match = env.SMTP_FROM.match(/^(.*)<([^>]+)>$/);
-  if (match) return { name: match[1].trim() || "Sutlej Automotives", email: match[2].trim() };
-  return { name: "Sutlej Automotives", email: env.SMTP_FROM };
-}
-
-async function sendViaBrevo(to: string, toName: string, subject: string, text: string, html: string): Promise<void> {
-  const sender = parseSender();
-  const res = await fetch("https://api.brevo.com/v3/smtp/email", {
-    method: "POST",
-    headers: {
-      accept: "application/json",
-      "content-type": "application/json",
-      "api-key": env.BREVO_API_KEY,
-    },
-    body: JSON.stringify({
-      sender,
-      to: [{ email: to, name: toName }],
-      subject,
-      textContent: text,
-      htmlContent: html,
-    }),
-  });
-
-  if (!res.ok) {
-    const detail = await res.text().catch(() => "");
-    throw new Error(`Brevo rejected the email (${res.status}): ${detail}`);
-  }
-}
-
-async function deliver(
-  to: string,
-  toName: string,
-  subject: string,
-  text: string,
-  html: string
-): Promise<void> {
-  if (env.BREVO_API_KEY) return sendViaBrevo(to, toName, subject, text, html);
-  await (await getTransporter()).sendMail({ from: env.SMTP_FROM, to, subject, text, html });
 }
 
 export async function sendOtpEmail(to: string, otp: string, name: string): Promise<void> {
@@ -101,13 +53,13 @@ export async function sendOtpEmail(to: string, otp: string, name: string): Promi
     </div>
   `;
 
-  await deliver(
+  await (await getTransporter()).sendMail({
+    from: env.SMTP_FROM,
     to,
-    name,
-    "Sutlej Automotives — Your password reset code",
-    `Hi ${name}, your Sutlej password reset code is ${otp}. It expires in ${env.OTP_TTL_MINUTES} minutes.`,
-    html
-  );
+    subject: "Sutlej Automotives — Your password reset code",
+    text: `Hi ${name}, your Sutlej password reset code is ${otp}. It expires in ${env.OTP_TTL_MINUTES} minutes.`,
+    html,
+  });
 }
 
 export async function sendSignupOtpEmail(to: string, otp: string, name: string): Promise<void> {
@@ -121,11 +73,11 @@ export async function sendSignupOtpEmail(to: string, otp: string, name: string):
     </div>
   `;
 
-  await deliver(
+  await (await getTransporter()).sendMail({
+    from: env.SMTP_FROM,
     to,
-    name,
-    "Sutlej Automotives — Verify your email",
-    `Hi ${name}, your Sutlej verification code is ${otp}. It expires in ${env.OTP_TTL_MINUTES} minutes.`,
-    html
-  );
+    subject: "Sutlej Automotives — Verify your email",
+    text: `Hi ${name}, your Sutlej verification code is ${otp}. It expires in ${env.OTP_TTL_MINUTES} minutes.`,
+    html,
+  });
 }
