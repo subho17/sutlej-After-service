@@ -14,7 +14,9 @@ export const env = {
   SUPABASE_URL: optional("SUPABASE_URL"),
   SUPABASE_ANON_KEY: optional("SUPABASE_ANON_KEY"),
   SUPABASE_SERVICE_ROLE_KEY: optional("SUPABASE_SERVICE_ROLE_KEY"),
-  // Outgoing mail (Gmail SMTP) for OTP emails
+  // Outgoing mail: Brevo HTTP API preferred (works on hosts that block
+  // SMTP ports, e.g. Render free tier). Falls back to SMTP for local dev.
+  BREVO_API_KEY: optional("BREVO_API_KEY"),
   SMTP_HOST: process.env.SMTP_HOST ?? "smtp.gmail.com",
   SMTP_PORT: Number(process.env.SMTP_PORT ?? 587),
   SMTP_USER: optional("SMTP_USER"),

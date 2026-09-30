@@ -30,7 +30,50 @@ async function getTransporter(): Promise<Transporter> {
 }
 
 export function isMailConfigured(): boolean {
-  return Boolean(env.SMTP_USER && env.SMTP_PASS);
+  // Brevo HTTP API (works everywhere, incl. hosts that block SMTP ports),
+  // else plain SMTP (local dev with Gmail app password).
+  return Boolean(env.BREVO_API_KEY || (env.SMTP_USER && env.SMTP_PASS));
+}
+
+function parseSender(): { name: string; email: string } {
+  const match = env.SMTP_FROM.match(/^(.*)<([^>]+)>$/);
+  if (match) return { name: match[1].trim() || "Sutlej Automotives", email: match[2].trim() };
+  return { name: "Sutlej Automotives", email: env.SMTP_FROM };
+}
+
+async function sendViaBrevo(to: string, toName: string, subject: string, text: string, html: string): Promise<void> {
+  const sender = parseSender();
+  const res = await fetch("https://api.brevo.com/v3/smtp/email", {
+    method: "POST",
+    headers: {
+      accept: "application/json",
+      "content-type": "application/json",
+      "api-key": env.BREVO_API_KEY,
+    },
+    body: JSON.stringify({
+      sender,
+      to: [{ email: to, name: toName }],
+      subject,
+      textContent: text,
+      htmlContent: html,
+    }),
+  });
+
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    throw new Error(`Brevo rejected the email (${res.status}): ${detail}`);
+  }
+}
+
+async function deliver(
+  to: string,
+  toName: string,
+  subject: string,
+  text: string,
+  html: string
+): Promise<void> {
+  if (env.BREVO_API_KEY) return sendViaBrevo(to, toName, subject, text, html);
+  await (await getTransporter()).sendMail({ from: env.SMTP_FROM, to, subject, text, html });
 }
 
 export async function sendOtpEmail(to: string, otp: string, name: string): Promise<void> {
@@ -44,13 +87,13 @@ export async function sendOtpEmail(to: string, otp: string, name: string): Promi
     </div>
   `;
 
-  await (await getTransporter()).sendMail({
-    from: env.SMTP_FROM,
+  await deliver(
     to,
-    subject: "Sutlej Automotives — Your password reset code",
-    text: `Hi ${name}, your Sutlej password reset code is ${otp}. It expires in ${env.OTP_TTL_MINUTES} minutes.`,
-    html,
-  });
+    name,
+    "Sutlej Automotives — Your password reset code",
+    `Hi ${name}, your Sutlej password reset code is ${otp}. It expires in ${env.OTP_TTL_MINUTES} minutes.`,
+    html
+  );
 }
 
 export async function sendSignupOtpEmail(to: string, otp: string, name: string): Promise<void> {
@@ -64,11 +107,11 @@ export async function sendSignupOtpEmail(to: string, otp: string, name: string):
     </div>
   `;
 
-  await (await getTransporter()).sendMail({
-    from: env.SMTP_FROM,
+  await deliver(
     to,
-    subject: "Sutlej Automotives — Verify your email",
-    text: `Hi ${name}, your Sutlej verification code is ${otp}. It expires in ${env.OTP_TTL_MINUTES} minutes.`,
-    html,
-  });
+    name,
+    "Sutlej Automotives — Verify your email",
+    `Hi ${name}, your Sutlej verification code is ${otp}. It expires in ${env.OTP_TTL_MINUTES} minutes.`,
+    html
+  );
 }
