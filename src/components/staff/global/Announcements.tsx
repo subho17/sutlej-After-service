@@ -1,39 +1,25 @@
 "use client";
 
 import React, { useState } from "react";
+import {
+  loadAnnouncements as loadSharedAnnouncements,
+  saveAnnouncements as persistSharedAnnouncements,
+  type Announcement,
+} from "@/lib/announcementsStore";
 
-export interface AnnouncementItem {
-  id: string;
-  title: string;
-  message: string;
-  createdAt: string;
-  active: boolean;
-}
-
-function loadAnnouncements(): AnnouncementItem[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const stored = localStorage.getItem("staffAnnouncements");
-    return stored ? (JSON.parse(stored) as AnnouncementItem[]) : [];
-  } catch {
-    return [];
-  }
-}
+// Kept for compatibility (same shape as the shared store type).
+export type AnnouncementItem = Announcement;
 
 export function Announcements() {
-  const [announcements, setAnnouncements] = useState<AnnouncementItem[]>(loadAnnouncements);
+  // Shared store: published items appear in the customer portal too.
+  const [announcements, setAnnouncements] = useState<Announcement[]>(loadSharedAnnouncements);
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const saveAnnouncements = (updated: AnnouncementItem[]) => {
+  const saveAnnouncements = (updated: Announcement[]) => {
     setAnnouncements(updated);
-    try {
-      localStorage.setItem("staffAnnouncements", JSON.stringify(updated));
-      localStorage.setItem("customerAnnouncements", JSON.stringify(updated));
-    } catch (e) {
-      console.error("Failed to save announcements", e);
-    }
+    persistSharedAnnouncements(updated);
   };
 
   const handlePost = (e: React.FormEvent) => {

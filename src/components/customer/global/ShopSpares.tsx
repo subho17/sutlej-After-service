@@ -2,6 +2,11 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
+import {
+  loadOrders,
+  normalizeOrder,
+  saveOrders,
+} from "@/lib/ordersStore";
 
 export interface SpareItem {
   id: string;
@@ -99,11 +104,7 @@ export function ShopSpares({ className = "" }: ShopSparesProps) {
     if (totalItemsCount === 0) return;
 
     setOrderSubmitting(true);
-    const existing =
-      typeof window !== "undefined"
-        ? JSON.parse(localStorage.getItem("sutlej_customer_orders") || "[]")
-        : [];
-    const count = existing.length + 1;
+    const count = loadOrders().length + 1;
     const orderId = `ORD-2026-${String(count).padStart(4, "0")}`;
 
     const items = Object.entries(quantities).map(([id, qty]) => {
@@ -120,7 +121,7 @@ export function ShopSpares({ className = "" }: ShopSparesProps) {
     const now = new Date();
     const months = [
       "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-      "Jul", "Aug", "Sept", "Oct", "Nov", "Dec",
+      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
     ];
     const formattedDate = `${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
 
@@ -132,29 +133,21 @@ export function ShopSpares({ className = "" }: ShopSparesProps) {
         "Aditi",
       items,
       totalAmount: totalPrice,
-      status: "pending",
+      status: "pending" as const,
       createdAt: formattedDate,
       date: formattedDate,
     };
 
     if (typeof window !== "undefined") {
       try {
-        const existing = JSON.parse(
-          localStorage.getItem("sutlej_customer_orders") || "[]"
-        );
-        localStorage.setItem(
-          "sutlej_customer_orders",
-          JSON.stringify([newOrder, ...existing])
-        );
-
-        // Also sync with staff orders
-        const staffOrders = JSON.parse(
-          localStorage.getItem("staffSparePartOrders") || "[]"
-        );
-        localStorage.setItem(
-          "staffSparePartOrders",
-          JSON.stringify([newOrder, ...staffOrders])
-        );
+        // Shared store: the order is visible to staff immediately.
+        saveOrders([
+          normalizeOrder({
+            ...newOrder,
+            createdAt: new Date().toISOString(),
+          }),
+          ...loadOrders().filter((o) => o.id !== newOrder.id),
+        ]);
 
         sessionStorage.setItem("lastSubmittedOrder", orderId);
       } catch {

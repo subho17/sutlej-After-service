@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { EmptyStateCard } from "./EmptyStateCard";
+import { loadOrders } from "@/lib/ordersStore";
 
 export interface OrderItem {
   partId?: string;
@@ -21,6 +22,9 @@ export interface CustomerOrder {
 }
 
 function getInitialOrders(fallback: CustomerOrder[]): CustomerOrder[] {
+  // Shared store: staff status updates (Delivered, …) show up here too.
+  const shared = loadOrders();
+  if (shared.length > 0) return shared as unknown as CustomerOrder[];
   if (typeof window === "undefined") return fallback;
   try {
     const saved = localStorage.getItem("sutlej_customer_orders");

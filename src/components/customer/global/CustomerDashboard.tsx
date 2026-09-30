@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useSyncExternalStore } from "react";
+import React, { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { EmptyStateCard } from "./EmptyStateCard";
+import { loadAnnouncements, type Announcement } from "@/lib/announcementsStore";
 
 function subscribe(callback: () => void) {
   if (typeof window === "undefined") return () => {};
@@ -43,6 +44,9 @@ export function CustomerDashboard({
 }: CustomerDashboardProps) {
   const storedName = useSyncExternalStore(subscribe, getStoredCustomerName, () => "");
   const displayName = initialCustomerName || storedName || "Aditi";
+  // Shared store: announcements published by staff appear here.
+  const [announcements] = useState<Announcement[]>(loadAnnouncements);
+  const liveAnnouncements = announcements.filter((a) => a.active !== false);
 
   return (
     <div
@@ -186,10 +190,40 @@ export function CustomerDashboard({
           <h3 className="text-base sm:text-lg font-bold text-gray-900 tracking-tight">
             Offers &amp; greetings
           </h3>
-          <EmptyStateCard
-            title="No offers yet"
-            description="Festival greetings and special offers from our team will show up here."
-          />
+          {liveAnnouncements.length === 0 ? (
+            <EmptyStateCard
+              title="No offers yet"
+              description="Festival greetings and special offers from our team will show up here."
+            />
+          ) : (
+            <div className="space-y-3">
+              {liveAnnouncements.map((item) => (
+                <div
+                  key={item.id}
+                  className="bg-white rounded-xl border border-gray-200/80 shadow-sm p-5 sm:p-6"
+                >
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <h4 className="font-bold text-slate-900 text-sm sm:text-base">
+                      {item.title}
+                    </h4>
+                    <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                      New
+                    </span>
+                  </div>
+                  <p className="text-xs sm:text-sm text-slate-600 whitespace-pre-line leading-relaxed mt-1.5">
+                    {item.message}
+                  </p>
+                  <p className="text-[11px] text-slate-400 pt-1.5">
+                    {new Date(item.createdAt).toLocaleDateString("en-IN", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

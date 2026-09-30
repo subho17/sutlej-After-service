@@ -2,6 +2,11 @@
 
 import React, { useState } from "react";
 import { CustomSelect } from "./CustomSelect";
+import {
+  loadOrders as loadSharedOrders,
+  saveOrders as persistSharedOrders,
+  type SharedOrder,
+} from "@/lib/ordersStore";
 
 export interface OrderItem {
   partId: string;
@@ -26,24 +31,11 @@ export interface SparePartOrder {
   notes?: string;
 }
 
-function loadOrders(): SparePartOrder[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const stored = localStorage.getItem("staffSparePartOrders");
-    if (stored) return JSON.parse(stored) as SparePartOrder[];
-    // Also check customer orders key if available
-    const customerStored = localStorage.getItem("customerOrders");
-    if (customerStored) return JSON.parse(customerStored) as SparePartOrder[];
-    return [];
-  } catch {
-    return [];
-  }
-}
-
 export function SparePartOrders() {
-  const [orders, setOrders] = useState<SparePartOrder[]>(loadOrders);
+  // Shared store: status updates here are visible in the customer portal too.
+  const [orders, setOrders] = useState<SharedOrder[]>(loadSharedOrders);
   const [statusFilter, setStatusFilter] = useState("all");
-  const [selectedOrder, setSelectedOrder] = useState<SparePartOrder | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<SharedOrder | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
   // New order form state
@@ -53,18 +45,15 @@ export function SparePartOrders() {
   const [newPartQty, setNewPartQty] = useState(1);
   const [newPartPrice, setNewPartPrice] = useState(1500);
 
-  const saveOrders = (updated: SparePartOrder[]) => {
+  const saveOrders = (updated: SharedOrder[]) => {
     setOrders(updated);
-    try {
-      localStorage.setItem("staffSparePartOrders", JSON.stringify(updated));
-    } catch (e) {
-      console.error("Failed to save orders to localStorage", e);
-    }
+    // Shared store: staff edits (e.g. Delivered) appear in the customer portal.
+    persistSharedOrders(updated);
   };
 
   const handleUpdateStatus = (
     orderId: string,
-    newStatus: SparePartOrder["status"]
+    newStatus: SharedOrder["status"]
   ) => {
     const updated = orders.map((o) =>
       o.id === orderId ? { ...o, status: newStatus } : o
@@ -81,7 +70,7 @@ export function SparePartOrders() {
       return;
     }
 
-    const newOrder: SparePartOrder = {
+    const newOrder: SharedOrder = {
       id: `ORD-${Date.now().toString().slice(-5)}`,
       customerName: newCustomerName.trim(),
       phoneNumber: newPhone.trim(),
@@ -97,6 +86,7 @@ export function SparePartOrders() {
       totalAmount: (Number(newPartQty) || 1) * (Number(newPartPrice) || 0),
       status: "pending",
       createdAt: new Date().toISOString(),
+      date: new Date().toISOString(),
     };
 
     saveOrders([newOrder, ...orders]);
@@ -114,7 +104,7 @@ export function SparePartOrders() {
     return item.status.toLowerCase() === statusFilter.toLowerCase();
   });
 
-  const getStatusBadge = (status: SparePartOrder["status"]) => {
+  const getStatusBadge = (status: SharedOrder["status"]) => {
     switch (status) {
       case "pending":
         return (
