@@ -13,15 +13,8 @@ router.post("/customer/login", asyncHandler(authController.customerLogin));
 router.post("/logout", asyncHandler(authController.logout));
 router.get("/me", requireAuth, asyncHandler(authController.me));
 
-// Customer signup with Gmail OTP verification (creates account + vehicle)
-router.post(
-  "/customer/signup/request",
-  asyncHandler(signupController.requestSignupOtp)
-);
-router.post(
-  "/customer/signup/verify",
-  asyncHandler(signupController.verifySignup)
-);
+// Customer signup — direct account + vehicle creation (no OTP)
+router.post("/customer/signup", asyncHandler(signupController.signup));
 
 // Customer password recovery via Gmail OTP (code goes to customer's email)
 router.post(

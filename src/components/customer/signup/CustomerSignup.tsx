@@ -20,7 +20,7 @@ export interface CustomerSignupData {
 
 export function CustomerSignup() {
   const router = useRouter();
-  const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(1);
+  const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
 
   const [formData, setFormData] = useState<CustomerSignupData>({
     fullName: "",
@@ -36,7 +36,9 @@ export function CustomerSignup() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [otp, setOtp] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -77,7 +79,7 @@ export function CustomerSignup() {
     setCurrentStep(3);
   };
 
-  // Step 3 Final Submission → request email OTP, then step 4 to verify
+  // Step 3 Final Submission → create account directly (auto-login via cookie)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -90,39 +92,12 @@ export function CustomerSignup() {
       setError("Please select the purchase/registration date.");
       return;
     }
-    if (!formData.password) {
-      setError("Please set a password.");
+    if (!formData.password || formData.password.length < 6) {
+      setError("Password must be at least 6 characters.");
       return;
     }
-
-    setLoading(true);
-
-    try {
-      const { ok, body } = await apiPost<unknown>("/api/auth/customer/signup/request", {
-        name: formData.fullName.trim(),
-        phone: formData.phone.trim(),
-        email: formData.email.trim(),
-      });
-      if (!ok) {
-        setError(body?.message ?? "Could not send verification code. Please try again.");
-        return;
-      }
-      setOtp("");
-      setCurrentStep(4);
-    } catch (err) {
-      setError(err instanceof Error && err.message ? err.message : "Unable to reach server. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Step 4 — verify OTP + create account (auto-login via cookie)
-  const handleVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-
-    if (!otp.trim()) {
-      setError("Please enter the verification code sent to your email.");
+    if (formData.password !== confirmPassword) {
+      setError("Passwords do not match. Please recheck.");
       return;
     }
 
@@ -130,12 +105,11 @@ export function CustomerSignup() {
 
     try {
       const { ok, body } = await apiPost<{ name: string }>(
-        "/api/auth/customer/signup/verify",
+        "/api/auth/customer/signup",
         {
-          email: formData.email.trim(),
-          otp: otp.trim(),
           name: formData.fullName.trim(),
           phone: formData.phone.trim(),
+          email: formData.email.trim(),
           password: formData.password,
           companyName: formData.companyName.trim(),
           gstNumber: formData.gstNumber.trim(),
@@ -145,32 +119,11 @@ export function CustomerSignup() {
         }
       );
       if (!ok) {
-        setError(body?.message ?? "Could not verify code. Please try again.");
+        setError(body?.message ?? "Could not create account. Please try again.");
         return;
       }
       if (body?.data?.name) sessionStorage.setItem("customerName", body.data.name);
       router.push("/customer");
-    } catch (err) {
-      setError(err instanceof Error && err.message ? err.message : "Unable to reach server. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleResendOtp = async () => {
-    setError(null);
-    setLoading(true);
-    try {
-      const { ok, body } = await apiPost<unknown>("/api/auth/customer/signup/request", {
-        name: formData.fullName.trim(),
-        phone: formData.phone.trim(),
-        email: formData.email.trim(),
-      });
-      if (!ok) {
-        setError(body?.message ?? "Could not resend code. Please try again.");
-        return;
-      }
-      setOtp("");
     } catch (err) {
       setError(err instanceof Error && err.message ? err.message : "Unable to reach server. Please try again.");
     } finally {
@@ -220,7 +173,6 @@ export function CustomerSignup() {
                   {currentStep === 1 && "Step 1 of 3: Your Personal Details"}
                   {currentStep === 2 && "Step 2 of 3: Company & Golf Cart"}
                   {currentStep === 3 && "Step 3 of 3: Vehicle Specs & Password"}
-                  {currentStep === 4 && "Step 4 of 4: Verify Your Email"}
                 </p>
 
               {/* Step Progress Dots / Bars */}
@@ -244,15 +196,6 @@ export function CustomerSignup() {
                 <div
                   className={`h-1.5 rounded-full transition-all duration-300 ${
                     currentStep === 3
-                      ? "w-8 bg-[#6366F1]"
-                      : currentStep > 3
-                      ? "w-5 bg-indigo-200"
-                      : "w-5 bg-gray-200"
-                  }`}
-                />
-                <div
-                  className={`h-1.5 rounded-full transition-all duration-300 ${
-                    currentStep === 4
                       ? "w-8 bg-[#6366F1]"
                       : "w-5 bg-gray-200"
                   }`}
@@ -454,15 +397,68 @@ export function CustomerSignup() {
                   <label className="block text-xs sm:text-sm font-semibold text-slate-800 mb-1.5">
                     Set a password
                   </label>
-                  <input
-                    type="password"
-                    name="password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    placeholder="Choose a password"
-                    className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 bg-[#FCFCFD] text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#6366F1] focus:ring-1 focus:ring-[#6366F1] transition-all"
-                    required
-                  />
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      name="password"
+                      value={formData.password}
+                      onChange={handleChange}
+                      placeholder="Choose a password (min 6 characters)"
+                      className="w-full px-3.5 py-2.5 pr-11 rounded-lg border border-slate-200 bg-[#FCFCFD] text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#6366F1] focus:ring-1 focus:ring-[#6366F1] transition-all"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((v) => !v)}
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#6366F1] transition-colors cursor-pointer"
+                    >
+                      {showPassword ? (
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                        </svg>
+                      ) : (
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* 10. Confirm password */}
+                <div>
+                  <label className="block text-xs sm:text-sm font-semibold text-slate-800 mb-1.5">
+                    Confirm password
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showConfirmPassword ? "text" : "password"}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Re-enter your password"
+                      className="w-full px-3.5 py-2.5 pr-11 rounded-lg border border-slate-200 bg-[#FCFCFD] text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#6366F1] focus:ring-1 focus:ring-[#6366F1] transition-all"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword((v) => !v)}
+                      aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#6366F1] transition-colors cursor-pointer"
+                    >
+                      {showConfirmPassword ? (
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                        </svg>
+                      ) : (
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
                 </div>
 
                 {/* Back and Final Submit Button */}
@@ -479,69 +475,13 @@ export function CustomerSignup() {
                     disabled={loading}
                     className="flex-1 py-3.5 rounded-lg bg-[#6366F1] hover:bg-[#4F46E5] active:bg-[#4338CA] disabled:opacity-60 text-white font-bold text-sm sm:text-base transition-colors duration-200 shadow-md shadow-[#6366F1]/20 cursor-pointer"
                   >
-                    {loading ? "Sending..." : "Send verification code"}
+                    {loading ? "Creating..." : "Create account"}
                   </button>
                 </div>
 
                 <p className="text-[11px] text-slate-400 text-center pt-1 leading-relaxed">
                   You can add more vehicles to your account later from &quot;My Vehicles.&quot;
                 </p>
-              </form>
-            )}
-
-            {/* ================= STEP 4 (EMAIL OTP VERIFICATION) ================= */}
-            {currentStep === 4 && (
-              <form onSubmit={handleVerifyOtp} className="space-y-4">
-                <span className="block text-[11px] font-bold tracking-wider text-slate-500 uppercase">
-                  VERIFY YOUR EMAIL
-                </span>
-
-                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                  We sent a 6-digit code to{" "}
-                  <span className="font-semibold text-slate-900">{formData.email}</span>.
-                  Enter it below to finish creating your account.
-                </p>
-
-                <div>
-                  <label className="block text-xs sm:text-sm font-semibold text-slate-800 mb-1.5">
-                    Verification code
-                  </label>
-                  <input
-                    type="text"
-                    value={otp}
-                    onChange={(e) => setOtp(e.target.value)}
-                    placeholder="Enter 6-digit code"
-                    maxLength={6}
-                    className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 bg-[#FCFCFD] text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#6366F1] focus:ring-1 focus:ring-[#6366F1] transition-all tracking-widest text-center font-mono font-bold"
-                    required
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full py-3.5 rounded-lg bg-[#6366F1] hover:bg-[#4F46E5] active:bg-[#4338CA] disabled:opacity-60 text-white font-bold text-sm sm:text-base transition-colors duration-200 shadow-md shadow-[#6366F1]/20 cursor-pointer"
-                >
-                  {loading ? "Verifying..." : "Verify & create account"}
-                </button>
-
-                <div className="flex items-center justify-between pt-1">
-                  <button
-                    type="button"
-                    onClick={() => setCurrentStep(3)}
-                    className="text-xs text-gray-500 hover:text-[#6366F1] font-medium"
-                  >
-                    ← Back
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleResendOtp}
-                    disabled={loading}
-                    className="text-xs text-[#6366F1] hover:underline font-semibold disabled:opacity-60"
-                  >
-                    Resend code
-                  </button>
-                </div>
               </form>
             )}
 
