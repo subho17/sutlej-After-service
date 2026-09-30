@@ -109,8 +109,8 @@ export function CustomerSignup() {
       }
       setOtp("");
       setCurrentStep(4);
-    } catch {
-      setError("Unable to reach server. Please try again.");
+    } catch (err) {
+      setError(err instanceof Error && err.message ? err.message : "Unable to reach server. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -150,8 +150,8 @@ export function CustomerSignup() {
       }
       if (body?.data?.name) sessionStorage.setItem("customerName", body.data.name);
       router.push("/customer");
-    } catch {
-      setError("Unable to reach server. Please try again.");
+    } catch (err) {
+      setError(err instanceof Error && err.message ? err.message : "Unable to reach server. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -171,8 +171,8 @@ export function CustomerSignup() {
         return;
       }
       setOtp("");
-    } catch {
-      setError("Unable to reach server. Please try again.");
+    } catch (err) {
+      setError(err instanceof Error && err.message ? err.message : "Unable to reach server. Please try again.");
     } finally {
       setLoading(false);
     }

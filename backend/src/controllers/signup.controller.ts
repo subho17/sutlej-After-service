@@ -61,7 +61,10 @@ export async function requestSignupOtp(req: Request, res: Response) {
     expiresAt: new Date(Date.now() + env.OTP_TTL_MINUTES * 60 * 1000),
   });
 
-  await sendSignupOtpEmail(email, otp, name);
+  // Send in background: respond now instead of waiting on the SMTP handshake.
+  sendSignupOtpEmail(email, otp, name).catch((err) => {
+    console.error("[backend] failed to send signup OTP email", err);
+  });
 
   res.json({ message: "Verification code sent to your email." });
 }

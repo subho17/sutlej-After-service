@@ -38,8 +38,8 @@ export function StaffLogin() {
       }
       if (body?.data?.name) sessionStorage.setItem("staffName", body.data.name);
       router.push("/staff/dashboard");
-    } catch {
-      setError("Unable to reach server. Please try again.");
+    } catch (err) {
+      setError(err instanceof Error && err.message ? err.message : "Unable to reach server. Please try again.");
     } finally {
       setLoading(false);
     }

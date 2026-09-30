@@ -57,7 +57,10 @@ export async function requestCustomerPasswordReset(req: Request, res: Response) 
     expiresAt: new Date(Date.now() + env.OTP_TTL_MINUTES * 60 * 1000),
   });
 
-  await sendOtpEmail(customer.email, otp, customer.name);
+  // Send in background: respond now instead of waiting on the SMTP handshake.
+  sendOtpEmail(customer.email, otp, customer.name).catch((err) => {
+    console.error("[backend] failed to send customer OTP email", err);
+  });
 
   res.json({ message: "If an account exists, a reset code has been sent." });
 }
@@ -126,7 +129,10 @@ export async function requestStaffPasswordReset(req: Request, res: Response) {
     expiresAt: new Date(Date.now() + env.OTP_TTL_MINUTES * 60 * 1000),
   });
 
-  await sendOtpEmail(env.STAFF_RESET_EMAIL, otp, `${staff.name} (${staff.staff_id})`);
+  // Send in background: respond now instead of waiting on the SMTP handshake.
+  sendOtpEmail(env.STAFF_RESET_EMAIL, otp, `${staff.name} (${staff.staff_id})`).catch((err) => {
+    console.error("[backend] failed to send staff OTP email", err);
+  });
 
   res.json({ message: "If the staff account exists, a reset code has been sent for approval." });
 }

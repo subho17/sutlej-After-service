@@ -38,8 +38,8 @@ export function CustomerLogin() {
       }
       if (body?.data?.name) sessionStorage.setItem("customerName", body.data.name);
       router.push("/customer");
-    } catch {
-      setError("Unable to reach server. Please try again.");
+    } catch (err) {
+      setError(err instanceof Error && err.message ? err.message : "Unable to reach server. Please try again.");
     } finally {
       setLoading(false);
     }

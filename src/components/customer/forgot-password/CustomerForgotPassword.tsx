@@ -35,8 +35,8 @@ export function CustomerForgotPassword() {
         return;
       }
       setStep("verify");
-    } catch {
-      setError("Unable to reach server. Please try again.");
+    } catch (err) {
+      setError(err instanceof Error && err.message ? err.message : "Unable to reach server. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -71,8 +71,8 @@ export function CustomerForgotPassword() {
         return;
       }
       setStep("success");
-    } catch {
-      setError("Unable to reach server. Please try again.");
+    } catch (err) {
+      setError(err instanceof Error && err.message ? err.message : "Unable to reach server. Please try again.");
     } finally {
       setLoading(false);
     }
