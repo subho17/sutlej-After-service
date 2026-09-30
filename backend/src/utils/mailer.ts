@@ -1,15 +1,29 @@
 import nodemailer, { type Transporter } from "nodemailer";
+import dns from "node:dns/promises";
 import { env } from "../config/env.js";
 
 let transporter: Transporter | null = null;
 
-function getTransporter(): Transporter {
+// Render has no IPv6 egress, but smtp.gmail.com often resolves to IPv6
+// first (ENETUNREACH). Resolve the SMTP host to IPv4 explicitly and
+// connect to the IP, keeping TLS verification against the real hostname.
+async function getTransporter(): Promise<Transporter> {
   if (!transporter) {
+    let host = env.SMTP_HOST;
+    try {
+      const resolved = await dns.lookup(env.SMTP_HOST, { family: 4 });
+      const ip = Array.isArray(resolved) ? resolved[0]?.address : resolved.address;
+      if (ip) host = ip;
+    } catch (err) {
+      console.error("[backend] SMTP IPv4 lookup failed, using hostname", err);
+    }
+
     transporter = nodemailer.createTransport({
-      host: env.SMTP_HOST,
+      host,
       port: env.SMTP_PORT,
       secure: env.SMTP_PORT === 465, // true for 465 (Gmail SSL), false for 587 (STARTTLS)
       auth: { user: env.SMTP_USER, pass: env.SMTP_PASS },
+      tls: { servername: env.SMTP_HOST },
     });
   }
   return transporter;
@@ -30,7 +44,7 @@ export async function sendOtpEmail(to: string, otp: string, name: string): Promi
     </div>
   `;
 
-  await getTransporter().sendMail({
+  await (await getTransporter()).sendMail({
     from: env.SMTP_FROM,
     to,
     subject: "Sutlej Automotives — Your password reset code",
@@ -50,7 +64,7 @@ export async function sendSignupOtpEmail(to: string, otp: string, name: string):
     </div>
   `;
 
-  await getTransporter().sendMail({
+  await (await getTransporter()).sendMail({
     from: env.SMTP_FROM,
     to,
     subject: "Sutlej Automotives — Verify your email",
