@@ -32,6 +32,24 @@ export const STAFF_NAV_ITEMS: NavItem[] = [
     ),
   },
   {
+    label: "Customers",
+    href: "/staff/customers",
+    icon: (active: boolean) => (
+      <svg
+        className={`w-4 h-4 transition-all duration-300 group-hover:scale-125 group-hover:-translate-y-0.5 ${
+          active ? "text-[#140F06]" : "text-slate-400 group-hover:text-[#E8A33D]"
+        }`}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      >
+        <path d="M19 21v-2a4 4 0 00-4-4H9a4 4 0 00-4 4v2" />
+        <circle cx="12" cy="7" r="4" />
+      </svg>
+    ),
+  },
+  {
     label: "New Complaint",
     href: "/staff/complaints/new",
     icon: (active: boolean) => (

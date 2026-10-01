@@ -16,6 +16,7 @@ export interface CustomerComplaint {
   phone: string;
   status: "pending" | "open" | "in-progress" | "resolved" | "closed";
   priority: string;
+  description?: string;
 }
 
 const DEFAULT_COMPLAINTS: CustomerComplaint[] = [
@@ -30,6 +31,7 @@ const DEFAULT_COMPLAINTS: CustomerComplaint[] = [
     phone: "9163399882",
     status: "open",
     priority: "Medium",
+    description: "Engine makes an unusual knocking noise on cold start.",
   },
 ];
 
@@ -49,6 +51,7 @@ function getInitialComplaints(fallback: CustomerComplaint[]): CustomerComplaint[
       phone: c.phoneNumber,
       status: c.status,
       priority: c.priority,
+      description: c.description,
     }));
   }
   if (typeof window === "undefined") return visibleRecords(fallback);
@@ -254,6 +257,13 @@ export function MyComplaints({
                       </>
                     )}
                   </p>
+
+                  {/* Complaint description */}
+                  {c.description && (
+                    <p className="text-xs sm:text-sm text-gray-600 leading-relaxed line-clamp-3">
+                      {c.description}
+                    </p>
+                  )}
                 </div>
 
                 {/* Right Column: Status Badge & Priority */}

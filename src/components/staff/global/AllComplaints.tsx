@@ -238,8 +238,9 @@ export function AllComplaints() {
                     <th className="py-3.5 px-4">ID</th>
                     <th className="py-3.5 px-4">Customer</th>
                     <th className="py-3.5 px-4">Vehicle No.</th>
-                    <th className="py-3.5 px-4">Category</th>
-                    <th className="py-3.5 px-4">Priority</th>
+                      <th className="py-3.5 px-4">Category</th>
+                      <th className="py-3.5 px-4">Description</th>
+                      <th className="py-3.5 px-4">Priority</th>
                     <th className="py-3.5 px-4">Status</th>
                     <th className="py-3.5 px-4">Date</th>
                     <th className="py-3.5 px-4 text-right">Actions</th>
@@ -260,6 +261,11 @@ export function AllComplaints() {
                       </td>
                       <td className="py-3.5 px-4 text-xs text-slate-600">
                         {item.category}
+                      </td>
+                      <td className="py-3.5 px-4 text-xs text-slate-600 max-w-64">
+                        <p className="truncate" title={item.description || "—"}>
+                          {item.description || "—"}
+                        </p>
                       </td>
                       <td className="py-3.5 px-4 text-xs font-semibold">
                         <span
@@ -356,6 +362,12 @@ export function AllComplaints() {
                     </div>
                     <div className="text-xs text-slate-400">{item.phoneNumber}</div>
                   </div>
+
+                  {item.description && (
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                      {item.description}
+                    </p>
+                  )}
 
                   <div className="flex items-center justify-between gap-2 text-xs">
                     <span className="font-mono uppercase font-semibold text-slate-800">
