@@ -122,6 +122,9 @@ export function RaiseComplaint({
         date: formattedDate,
         source: "Raised by customer",
         customerName,
+        ownerId:
+          (typeof window !== "undefined" && sessionStorage.getItem("customerId")) ||
+          undefined,
         email: email.trim() || undefined,
         vehicleRegistrationNo: currentVehicle.registrationNo,
         model: currentVehicle.model,

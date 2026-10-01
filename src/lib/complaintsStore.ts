@@ -12,6 +12,8 @@ export interface SharedComplaint {
   title: string;
   description: string;
   customerName: string;
+  /** Account id of the customer who raised it (missing on legacy rows). */
+  ownerId?: string;
   phoneNumber: string;
   /** Customer email for status-update emails (optional). */
   email?: string;
@@ -88,6 +90,7 @@ export function normalizeComplaint(raw: RawComplaint | SharedComplaint): SharedC
     title: str(raw.title) || `${category} - ${vehicle}`.trim(),
     description: str(raw.description),
     customerName: str(raw.customerName),
+    ownerId: str(pick(raw, "ownerId")) || undefined,
     phoneNumber: phone,
     email: str(pick(raw, "email")) || undefined,
     vehicleRegistrationNo: vehicle,

@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { EmptyStateCard } from "./EmptyStateCard";
 import { loadOrders, subscribeOrders } from "@/lib/ordersStore";
+import { visibleRecords } from "@/lib/ownership";
 
 export interface OrderItem {
   partId?: string;
@@ -22,22 +23,22 @@ export interface CustomerOrder {
 }
 
 function getInitialOrders(fallback: CustomerOrder[]): CustomerOrder[] {
-  // Shared store: staff status updates (Delivered, …) show up here too.
-  const shared = loadOrders();
+  // Privacy: each user sees only their own orders (staff sees all).
+  const shared = visibleRecords(loadOrders());
   if (shared.length > 0) return shared as unknown as CustomerOrder[];
-  if (typeof window === "undefined") return fallback;
+  if (typeof window === "undefined") return visibleRecords(fallback);
   try {
     const saved = localStorage.getItem("sutlej_customer_orders");
     if (saved) {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed)) {
-        return parsed;
+        return visibleRecords(parsed);
       }
     }
   } catch {
     // Ignore storage errors
   }
-  return fallback;
+  return visibleRecords(fallback);
 }
 
 export interface MyOrdersProps {

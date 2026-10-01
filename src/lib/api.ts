@@ -17,9 +17,9 @@ export interface ApiResult<T> {
 
 const DEFAULT_TIMEOUT_MS = 45000;
 
-export async function apiPost<T>(
+async function request<T>(
   path: string,
-  body: unknown,
+  init: RequestInit,
   timeoutMs = DEFAULT_TIMEOUT_MS
 ): Promise<ApiResult<T>> {
   const controller = new AbortController();
@@ -28,10 +28,8 @@ export async function apiPost<T>(
   let res: Response;
   try {
     res = await fetch(`${API_BASE}${path}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      ...init,
       credentials: "include",
-      body: JSON.stringify(body),
       signal: controller.signal,
     });
   } catch (err) {
@@ -47,4 +45,34 @@ export async function apiPost<T>(
 
   const parsed = (await res.json().catch(() => null)) as ApiBody<T> | null;
   return { ok: res.ok, status: res.status, body: parsed };
+}
+
+export async function apiPost<T>(
+  path: string,
+  body: unknown,
+  timeoutMs = DEFAULT_TIMEOUT_MS
+): Promise<ApiResult<T>> {
+  return request<T>(
+    path,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    },
+    timeoutMs
+  );
+}
+
+export async function apiGet<T>(
+  path: string,
+  timeoutMs = DEFAULT_TIMEOUT_MS
+): Promise<ApiResult<T>> {
+  return request<T>(path, { method: "GET" }, timeoutMs);
+}
+
+export async function apiDelete<T>(
+  path: string,
+  timeoutMs = DEFAULT_TIMEOUT_MS
+): Promise<ApiResult<T>> {
+  return request<T>(path, { method: "DELETE" }, timeoutMs);
 }

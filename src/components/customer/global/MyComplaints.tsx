@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { EmptyStateCard } from "./EmptyStateCard";
 import { loadComplaints, subscribeComplaints } from "@/lib/complaintsStore";
+import { visibleRecords } from "@/lib/ownership";
 
 export interface CustomerComplaint {
   id: string;
@@ -33,8 +34,9 @@ const DEFAULT_COMPLAINTS: CustomerComplaint[] = [
 ];
 
 function getInitialComplaints(fallback: CustomerComplaint[]): CustomerComplaint[] {
-  // Shared store: staff status updates appear here (live-synced below).
-  const shared = loadComplaints();
+  // Privacy: each user sees only their own complaints (staff sees all).
+  // Shared store first (migrates legacy keys), then legacy/fallback.
+  const shared = visibleRecords(loadComplaints());
   if (shared.length > 0) {
     return shared.map((c) => ({
       id: c.id,
@@ -49,19 +51,19 @@ function getInitialComplaints(fallback: CustomerComplaint[]): CustomerComplaint[
       priority: c.priority,
     }));
   }
-  if (typeof window === "undefined") return fallback;
+  if (typeof window === "undefined") return visibleRecords(fallback);
   try {
     const saved = localStorage.getItem("sutlej_customer_complaints");
     if (saved) {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+        return visibleRecords(parsed);
       }
     }
   } catch {
     // Ignore storage errors
   }
-  return fallback;
+  return visibleRecords(fallback);
 }
 
 export interface MyComplaintsProps {
@@ -81,31 +83,36 @@ export function MyComplaints({
   initialComplaints,
   className = "",
 }: MyComplaintsProps) {
-  const [complaints, setComplaints] = useState<CustomerComplaint[]>(() => {
-    const fallback =
-      initialComplaints && initialComplaints.length > 0
-        ? initialComplaints
-        : DEFAULT_COMPLAINTS;
-    return getInitialComplaints(fallback);
-  });
+  // SSR-safe initial state: must match server render exactly.
+  // Browser-only sources (localStorage/sessionStorage) load in useEffect
+  // below, otherwise server renders (1) but client hydrates (0).
+  const fallback =
+    initialComplaints && initialComplaints.length > 0
+      ? initialComplaints
+      : DEFAULT_COMPLAINTS;
+  const [complaints, setComplaints] =
+    useState<CustomerComplaint[]>(fallback);
 
   // Live sync: staff status updates appear instantly, no refresh needed.
+  // One-time post-hydration sync from localStorage (client-only) — the
+  // initial render must match SSR, so this cascading render is intentional.
   useEffect(() => {
-    const defaults =
-      initialComplaints && initialComplaints.length > 0
-        ? initialComplaints
-        : DEFAULT_COMPLAINTS;
-    return subscribeComplaints(() => setComplaints(getInitialComplaints(defaults)));
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setComplaints(getInitialComplaints(fallback));
+    return subscribeComplaints(() => setComplaints(getInitialComplaints(fallback)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const [toastMessage, setToastMessage] = useState<string | null>(() => {
-    if (typeof window === "undefined") return null;
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // sessionStorage is client-only: read after mount to avoid hydration mismatch.
+  useEffect(() => {
     const submitted = sessionStorage.getItem("lastSubmittedComplaint");
-    if (!submitted) return null;
+    if (!submitted) return;
     sessionStorage.removeItem("lastSubmittedComplaint");
-    return `Complaint ${submitted} submitted — our team will review it`;
-  });
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setToastMessage(`Complaint ${submitted} submitted — our team will review it`);
+  }, []);
 
   // Auto-dismiss the toast notification
   useEffect(() => {

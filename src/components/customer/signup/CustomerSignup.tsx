@@ -104,7 +104,7 @@ export function CustomerSignup() {
     setLoading(true);
 
     try {
-      const { ok, body } = await apiPost<{ name: string }>(
+      const { ok, body } = await apiPost<{ name: string; customerId?: string | null }>(
         "/api/auth/customer/signup",
         {
           name: formData.fullName.trim(),
@@ -123,6 +123,7 @@ export function CustomerSignup() {
         return;
       }
       if (body?.data?.name) sessionStorage.setItem("customerName", body.data.name);
+      if (body?.data?.customerId) sessionStorage.setItem("customerId", body.data.customerId);
       router.push("/customer");
     } catch (err) {
       setError(err instanceof Error && err.message ? err.message : "Unable to reach server. Please try again.");

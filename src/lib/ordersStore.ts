@@ -16,6 +16,8 @@ export interface SharedOrderItem {
 export interface SharedOrder {
   id: string;
   customerName: string;
+  /** Account id of the customer who placed it (missing on legacy/staff rows). */
+  ownerId?: string;
   phoneNumber: string;
   email?: string;
   vehicleRegistrationNo?: string;
@@ -71,6 +73,10 @@ export function normalizeOrder(raw: RawOrder): SharedOrder {
   return {
     id: String(raw.id),
     customerName: typeof raw.customerName === "string" ? raw.customerName : "",
+    ownerId:
+      typeof (raw as { ownerId?: unknown }).ownerId === "string"
+        ? (raw as { ownerId?: string }).ownerId
+        : undefined,
     phoneNumber: typeof raw.phoneNumber === "string" ? raw.phoneNumber : "",
     email: typeof raw.email === "string" ? raw.email : undefined,
     vehicleRegistrationNo:

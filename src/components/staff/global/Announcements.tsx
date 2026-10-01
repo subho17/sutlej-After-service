@@ -7,16 +7,42 @@ import {
   subscribeAnnouncements,
   type Announcement,
 } from "@/lib/announcementsStore";
+import { apiDelete, apiGet, apiPost } from "@/lib/api";
 
 // Kept for compatibility (same shape as the shared store type).
 export type AnnouncementItem = Announcement;
 
+interface AnnouncementPayload {
+  id: string;
+  title: string;
+  message: string;
+  createdAt: string;
+  active: boolean;
+}
+
 export function Announcements() {
-  // Shared store: published items appear in the customer portal too.
+  // Server first (works across devices), local store as offline fallback.
   const [announcements, setAnnouncements] = useState<Announcement[]>(loadSharedAnnouncements);
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    apiGet<AnnouncementPayload[]>("/api/announcements?active=all")
+      .then(({ ok, body }) => {
+        if (cancelled || !ok || !body?.data) return;
+        setAnnouncements(body.data);
+        persistSharedAnnouncements(body.data);
+      })
+      .catch(() => {
+        // Offline / server asleep: keep local data.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Shared store: staff + portal stay in sync live, no refresh needed.
   useEffect(
@@ -29,30 +55,63 @@ export function Announcements() {
     persistSharedAnnouncements(updated);
   };
 
-  const handlePost = (e: React.FormEvent) => {
+  const handlePost = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !message.trim()) return;
 
     setIsSubmitting(true);
-    const newAnnouncement: AnnouncementItem = {
-      id: `ANN-${Date.now()}`,
-      title: title.trim(),
-      message: message.trim(),
-      createdAt: new Date().toISOString(),
-      active: true,
-    };
-
-    const updated = [newAnnouncement, ...announcements];
-    saveAnnouncements(updated);
-
-    setTitle("");
-    setMessage("");
-    setIsSubmitting(false);
+    setSyncError(null);
+    try {
+      const { ok, body } = await apiPost<AnnouncementPayload>("/api/announcements", {
+        title: title.trim(),
+        message: message.trim(),
+      });
+      if (ok && body?.data) {
+        const updated = [body.data, ...announcements];
+        saveAnnouncements(updated);
+      } else {
+        // Offline fallback: local-only post (visible in this browser).
+        const updated = [
+          {
+            id: `ANN-${Date.now()}`,
+            title: title.trim(),
+            message: message.trim(),
+            createdAt: new Date().toISOString(),
+            active: true,
+          },
+          ...announcements,
+        ];
+        saveAnnouncements(updated);
+        setSyncError("Saved on this device only — server unreachable, customers on other devices won't see it yet.");
+      }
+    } catch {
+      const updated = [
+        {
+          id: `ANN-${Date.now()}`,
+          title: title.trim(),
+          message: message.trim(),
+          createdAt: new Date().toISOString(),
+          active: true,
+        },
+        ...announcements,
+      ];
+      saveAnnouncements(updated);
+      setSyncError("Saved on this device only — server unreachable, customers on other devices won't see it yet.");
+    } finally {
+      setTitle("");
+      setMessage("");
+      setIsSubmitting(false);
+    }
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     const updated = announcements.filter((a) => a.id !== id);
     saveAnnouncements(updated);
+    try {
+      await apiDelete(`/api/announcements/${encodeURIComponent(id)}`);
+    } catch {
+      // Local delete already applied; server sync best-effort.
+    }
   };
 
   return (
@@ -114,6 +173,11 @@ export function Announcements() {
                 {isSubmitting ? "Posting..." : "Post"}
               </button>
             </div>
+            {syncError && (
+              <p className="mt-3 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+                {syncError}
+              </p>
+            )}
           </form>
         </div>
 

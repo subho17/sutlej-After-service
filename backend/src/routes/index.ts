@@ -3,6 +3,7 @@ import authRoutes from "./auth.routes.js";
 import staffRoutes from "./staff.routes.js";
 import customerRoutes from "./customer.routes.js";
 import complaintRoutes from "./complaint.routes.js";
+import announcementRoutes from "./announcement.routes.js";
 
 const router = Router();
 
@@ -15,5 +16,6 @@ router.use("/auth", authRoutes);
 router.use("/staff", staffRoutes);
 router.use("/customers", customerRoutes);
 router.use("/complaints", complaintRoutes);
+router.use("/announcements", announcementRoutes);
 
 export default router;

@@ -12,7 +12,8 @@ create table if not exists public.staff (
   role          text        not null default 'staff' check (role in ('admin', 'staff')),
   active        boolean     not null default true,
   created_at    timestamptz not null default now(),
-  updated_at    timestamptz not null default now()
+  updated_at    timestamptz not null default now(),
+
 );
 
 comment on table public.staff is 'Service-desk users. Login accepts staff_id, username, email or phone.';

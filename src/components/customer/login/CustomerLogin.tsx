@@ -8,6 +8,7 @@ import { apiPost } from "@/lib/api";
 
 interface CustomerLoginData {
   name: string;
+  customerId?: string | null;
 }
 
 export function CustomerLogin() {
@@ -37,6 +38,7 @@ export function CustomerLogin() {
         return;
       }
       if (body?.data?.name) sessionStorage.setItem("customerName", body.data.name);
+      if (body?.data?.customerId) sessionStorage.setItem("customerId", body.data.customerId);
       router.push("/customer");
     } catch (err) {
       setError(err instanceof Error && err.message ? err.message : "Unable to reach server. Please try again.");

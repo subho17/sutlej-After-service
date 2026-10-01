@@ -131,6 +131,9 @@ export function ShopSpares({ className = "" }: ShopSparesProps) {
         (typeof window !== "undefined" &&
           sessionStorage.getItem("customerName")) ||
         "Aditi",
+      ownerId:
+        (typeof window !== "undefined" && sessionStorage.getItem("customerId")) ||
+        undefined,
       items,
       totalAmount: totalPrice,
       status: "pending" as const,

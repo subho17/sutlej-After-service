@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { currentCustomerId } from "@/lib/ownership";
 
 export interface Vehicle {
   id: string;
@@ -8,6 +9,8 @@ export interface Vehicle {
   model: string;
   purchaseDate: string;
   nextServiceDate: string;
+  /** Account id of the owner (missing on legacy rows). */
+  ownerId?: string;
 }
 
 const DEFAULT_VEHICLES: Vehicle[] = [
@@ -15,7 +18,7 @@ const DEFAULT_VEHICLES: Vehicle[] = [
     id: "veh-1",
     registrationNo: "PB-10-GC-PT",
     model: "club car tempo",
-    purchaseDate: "27 Sept 2026",
+    purchaseDate: "27 Sep 2026",
     nextServiceDate: "27 Dec 2026",
   },
 ];
@@ -35,19 +38,26 @@ export interface MyVehiclesProps {
  * - Dynamic addition of new vehicles with automatic 3-month next quarterly service calculation
  */
 function getInitialVehicles(fallback: Vehicle[]): Vehicle[] {
-  if (typeof window === "undefined") return fallback;
+  // Privacy: each user sees only their own vehicles.
+  // Vehicles carry no name field, so legacy rows without an owner stay
+  // visible; only rows owned by a *different* account are hidden.
+  const myId = currentCustomerId();
+  const visible = (list: Vehicle[]) =>
+    !myId ? list : list.filter((v) => !v.ownerId || v.ownerId === myId);
+
+  if (typeof window === "undefined") return visible(fallback);
   try {
     const saved = localStorage.getItem("sutlej_customer_vehicles");
     if (saved) {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+        return visible(parsed);
       }
     }
   } catch {
     // Ignore storage errors
   }
-  return fallback;
+  return visible(fallback);
 }
 
 export function MyVehicles({
@@ -101,11 +111,11 @@ export function MyVehicles({
     if (purchaseDate) {
       const pDate = new Date(purchaseDate);
       if (!isNaN(pDate.getTime())) {
-        const months = [
-          "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-          "Jul", "Aug", "Sept", "Oct", "Nov", "Dec",
-        ];
-        formattedRegDate = `Registered ${pDate.getDate()} ${months[pDate.getMonth()]} ${pDate.getFullYear()}`;
+      const months = [
+        "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+      ];
+      formattedRegDate = `Registered ${pDate.getDate()} ${months[pDate.getMonth()]} ${pDate.getFullYear()}`;
 
         // Next quarterly service (+3 months)
         const nDate = new Date(pDate);
@@ -116,7 +126,7 @@ export function MyVehicles({
       const now = new Date();
       const months = [
         "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-        "Jul", "Aug", "Sept", "Oct", "Nov", "Dec",
+        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
       ];
       formattedRegDate = `Registered ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
       const nextQuarter = new Date(now);
@@ -130,6 +140,9 @@ export function MyVehicles({
       model: mdl,
       purchaseDate: formattedRegDate,
       nextServiceDate: formattedNextDate,
+      ownerId:
+        (typeof window !== "undefined" && sessionStorage.getItem("customerId")) ||
+        undefined,
     };
 
     const updated = [...vehicles, newVehicle];

@@ -4,6 +4,15 @@ import React, { useEffect, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { EmptyStateCard } from "./EmptyStateCard";
 import { loadAnnouncements, subscribeAnnouncements, type Announcement } from "@/lib/announcementsStore";
+import { apiGet } from "@/lib/api";
+
+interface AnnouncementPayload {
+  id: string;
+  title: string;
+  message: string;
+  createdAt: string;
+  active: boolean;
+}
 
 function subscribe(callback: () => void) {
   if (typeof window === "undefined") return () => {};
@@ -46,6 +55,22 @@ export function CustomerDashboard({
   const displayName = initialCustomerName || storedName || "Aditi";
   // Shared store: announcements published by staff appear here.
   const [announcements, setAnnouncements] = useState<Announcement[]>(loadAnnouncements);
+
+  // Server first (works for brand-new users on any device), local fallback.
+  useEffect(() => {
+    let cancelled = false;
+    apiGet<AnnouncementPayload[]>("/api/announcements")
+      .then(({ ok, body }) => {
+        if (cancelled || !ok || !body?.data) return;
+        setAnnouncements(body.data);
+      })
+      .catch(() => {
+        // Offline / server asleep: keep local data.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Live sync: new staff posts appear instantly, no refresh needed.
   useEffect(
