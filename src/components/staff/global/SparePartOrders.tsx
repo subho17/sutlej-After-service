@@ -4,8 +4,11 @@ import React, { useEffect, useState } from "react";
 import { CustomSelect } from "./CustomSelect";
 import {
   loadOrders as loadSharedOrders,
+  pushOrderStatusToBackend,
+  pushOrderToBackend,
   saveOrders as persistSharedOrders,
   subscribeOrders,
+  syncOrdersFromBackend,
   type SharedOrder,
 } from "@/lib/ordersStore";
 
@@ -36,7 +39,14 @@ export function SparePartOrders() {
   // Shared store: status updates here are visible in the customer portal too.
   const [orders, setOrders] = useState<SharedOrder[]>(loadSharedOrders);
   // Shared store: customer orders arrive live, no refresh needed.
-  useEffect(() => subscribeOrders(() => setOrders(loadSharedOrders())), []);
+  useEffect(() => {
+    const rebuild = () => setOrders(loadSharedOrders());
+    // Cross-device: pull orders placed on other devices, then rebuild.
+    syncOrdersFromBackend().then((changed) => {
+      if (changed) rebuild();
+    });
+    return subscribeOrders(rebuild);
+  }, []);
 
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedOrder, setSelectedOrder] = useState<SharedOrder | null>(null);
@@ -66,6 +76,8 @@ export function SparePartOrders() {
     if (selectedOrder && selectedOrder.id === orderId) {
       setSelectedOrder({ ...selectedOrder, status: newStatus });
     }
+    // Cross-device: sync the status move to the backend (fire-and-forget).
+    pushOrderStatusToBackend(orderId, newStatus);
   };
 
   const handleCreateOrder = (e: React.FormEvent) => {
@@ -94,6 +106,8 @@ export function SparePartOrders() {
     };
 
     saveOrders([newOrder, ...orders]);
+    // Cross-device: mirror to the backend shared copy (fire-and-forget).
+    pushOrderToBackend(newOrder, "staff");
     setShowCreateModal(false);
     setNewCustomerName("");
     setNewPhone("");

@@ -142,6 +142,129 @@ export function saveOrders(orders: SharedOrder[]): void {
   persist(orders.map(normalizeOrder));
 }
 
+// ---------------------------------------------------------------------------
+// Backend sync (cross-device). Local storage stays the interactive source of
+// truth; the backend (Supabase) is the shared copy every device merges.
+// All helpers fail silently offline — the portals keep working locally.
+// ---------------------------------------------------------------------------
+
+import { apiGet, apiPatch, apiPost } from "./api";
+
+/** Order row as returned by GET /api/orders (Supabase). */
+export interface BackendOrderRow {
+  id: string;
+  order_no: string | null;
+  customer_name: string | null;
+  phone: string | null;
+  email: string | null;
+  vehicle_reg_no: string | null;
+  vehicle_model: string | null;
+  delivery_address: string | null;
+  items: SharedOrder["items"] | null;
+  total: number | string | null;
+  status: string | null;
+  notes: string | null;
+  owner_id: string | null;
+  created_at: string;
+}
+
+function displayDateOf(iso: string): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  const months = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+  ];
+  return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function fromBackendRow(row: BackendOrderRow): SharedOrder {
+  return normalizeOrder({
+    id: row.order_no || `srv-${String(row.id).slice(0, 8)}`,
+    customerName: row.customer_name ?? "",
+    ownerId: row.owner_id ?? undefined,
+    phoneNumber: row.phone ?? "",
+    email: row.email ?? undefined,
+    vehicleRegistrationNo: row.vehicle_reg_no ?? undefined,
+    vehicleModel: row.vehicle_model ?? undefined,
+    deliveryAddress: row.delivery_address ?? undefined,
+    items: (Array.isArray(row.items) ? row.items : []) as SharedOrder["items"],
+    totalAmount: Number(row.total) || 0,
+    status: row.status as SharedOrder["status"],
+    createdAt: row.created_at,
+    date: displayDateOf(row.created_at),
+    notes: row.notes ?? undefined,
+  });
+}
+
+/** Fire-and-forget: push an order to the backend shared copy. */
+export function pushOrderToBackend(o: SharedOrder, createdBy?: string): void {
+  apiPost("/api/orders", {
+    orderNo: o.id,
+    customerName: o.customerName,
+    phone: o.phoneNumber,
+    email: o.email,
+    vehicleRegNo: o.vehicleRegistrationNo,
+    vehicleModel: o.vehicleModel,
+    deliveryAddress: o.deliveryAddress,
+    items: o.items,
+    total: o.totalAmount,
+    status: o.status,
+    notes: o.notes,
+    ownerId: o.ownerId,
+    createdBy,
+    createdAt: o.createdAt,
+  }).catch(() => {
+    // Offline / backend down: stays local, merges later.
+  });
+}
+
+/** Fire-and-forget: sync a staff status move to the backend. */
+export function pushOrderStatusToBackend(orderNo: string, status: string): void {
+  if (typeof window === "undefined") return;
+  const encoded = encodeURIComponent(orderNo);
+  apiPatch(`/api/orders/by-no/${encoded}/status`, { status }).catch(() => {
+    // Offline: stays local, retried on next status change.
+  });
+}
+
+let ordersSyncAt = 0;
+let ordersSyncInflight: Promise<boolean> | null = null;
+const ORDERS_SYNC_TTL_MS = 30_000;
+
+/**
+ * Pull the backend shared copy and union it into localStorage.
+ * Local rows win on id conflict. Returns true when new rows arrived.
+ * Deduped + 30s TTL so many components can call it.
+ */
+export function syncOrdersFromBackend(force = false): Promise<boolean> {
+  if (typeof window === "undefined") return Promise.resolve(false);
+  const now = Date.now();
+  if (!force && now - ordersSyncAt < ORDERS_SYNC_TTL_MS) {
+    return Promise.resolve(false);
+  }
+  if (ordersSyncInflight) return ordersSyncInflight;
+  ordersSyncInflight = (async () => {
+    try {
+      const { ok, body } = await apiGet<BackendOrderRow[]>("/api/orders");
+      if (!ok || !body) return false;
+      const rows = Array.isArray(body) ? body : body.data;
+      if (!Array.isArray(rows) || rows.length === 0) return false;
+      const seen = new Set(loadOrders().map((o) => o.id));
+      const incoming = rows.map(fromBackendRow).filter((o) => !seen.has(o.id));
+      if (incoming.length === 0) return false;
+      saveOrders([...loadOrders(), ...incoming]);
+      return true;
+    } catch {
+      return false;
+    } finally {
+      ordersSyncAt = Date.now();
+      ordersSyncInflight = null;
+    }
+  })();
+  return ordersSyncInflight;
+}
+
 type Listener = () => void;
 
 /**

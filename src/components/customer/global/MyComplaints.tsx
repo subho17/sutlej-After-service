@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { EmptyStateCard } from "./EmptyStateCard";
-import { loadComplaints, subscribeComplaints } from "@/lib/complaintsStore";
+import { loadComplaints, subscribeComplaints, syncComplaintsFromBackend } from "@/lib/complaintsStore";
 import { visibleRecords } from "@/lib/ownership";
 
 export interface CustomerComplaint {
@@ -97,12 +97,16 @@ export function MyComplaints({
     useState<CustomerComplaint[]>(fallback);
 
   // Live sync: staff status updates appear instantly, no refresh needed.
-  // One-time post-hydration sync from localStorage (client-only) — the
-  // initial render must match SSR, so this cascading render is intentional.
+  // One-time post-hydration sync from localStorage + backend (client-only) —
+  // the initial render must match SSR, so this cascading render is intentional.
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setComplaints(getInitialComplaints(fallback));
-    return subscribeComplaints(() => setComplaints(getInitialComplaints(fallback)));
+    const rebuild = () => setComplaints(getInitialComplaints(fallback));
+    rebuild();
+    // Cross-device: pull tickets created on other devices, then rebuild.
+    syncComplaintsFromBackend().then((changed) => {
+      if (changed) rebuild();
+    });
+    return subscribeComplaints(rebuild);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

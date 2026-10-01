@@ -6,6 +6,7 @@ import { CustomSelect } from "./CustomSelect";
 import {
   loadComplaints,
   normalizeComplaint,
+  pushComplaintToBackend,
   saveComplaints,
 } from "@/lib/complaintsStore";
 
@@ -102,14 +103,17 @@ export function RegisterComplaint() {
       };
 
       // Store in the shared complaints store (visible in customer portal too)
+      const record = normalizeComplaint({
+        ...newComplaint,
+        createdAt: new Date().toISOString(),
+        date: new Date().toISOString(),
+      });
       saveComplaints([
-        normalizeComplaint({
-          ...newComplaint,
-          createdAt: new Date().toISOString(),
-          date: new Date().toISOString(),
-        }),
+        record,
         ...loadComplaints().filter((c) => c.id !== newComplaint.id),
       ]);
+      // Cross-device: mirror to the backend shared copy (fire-and-forget).
+      pushComplaintToBackend(record);
 
       setSuccess("Complaint registered successfully! Redirecting...");
 

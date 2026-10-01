@@ -11,6 +11,16 @@ router.use(requireAuth);
 router.get("/", asyncHandler(complaintController.listComplaintsHandler));
 router.post("/", asyncHandler(complaintController.createComplaintHandler));
 
+// Portal write-through (staff + customer): upsert by ticket_no
+router.post("/portal", asyncHandler(complaintController.portalComplaintHandler));
+
+// Staff-only: sync a status move back to Supabase
+router.patch(
+  "/by-ticket/:ticketNo/status",
+  requireRole("staff"),
+  asyncHandler(complaintController.portalComplaintStatusHandler)
+);
+
 // Staff-only: send a formal email about a complaint
 router.post(
   "/notify",

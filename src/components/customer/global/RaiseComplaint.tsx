@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   loadComplaints,
   normalizeComplaint,
+  pushComplaintToBackend,
   saveComplaints,
 } from "@/lib/complaintsStore";
 
@@ -140,13 +141,16 @@ export function RaiseComplaint({
       // Save to the shared complaints store (visible to staff immediately)
       if (typeof window !== "undefined") {
         try {
+          const record = normalizeComplaint({
+            ...newComplaint,
+            phoneNumber: newComplaint.phone,
+          });
           saveComplaints([
-            normalizeComplaint({
-              ...newComplaint,
-              phoneNumber: newComplaint.phone,
-            }),
+            record,
             ...loadComplaints().filter((c) => c.id !== complaintId),
           ]);
+          // Cross-device: mirror to the backend shared copy (fire-and-forget).
+          pushComplaintToBackend(record);
 
           sessionStorage.setItem("lastSubmittedComplaint", complaintId);
         } catch {

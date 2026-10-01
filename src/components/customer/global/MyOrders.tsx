@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { EmptyStateCard } from "./EmptyStateCard";
-import { loadOrders, subscribeOrders } from "@/lib/ordersStore";
+import { loadOrders, subscribeOrders, syncOrdersFromBackend } from "@/lib/ordersStore";
 import { visibleRecords } from "@/lib/ownership";
 
 export interface OrderItem {
@@ -63,7 +63,12 @@ export function MyOrders({ initialOrders, className = "" }: MyOrdersProps) {
   // Live sync: staff status updates appear instantly, no refresh needed.
   useEffect(() => {
     const fallback = initialOrders || [];
-    return subscribeOrders(() => setOrders(getInitialOrders(fallback)));
+    const rebuild = () => setOrders(getInitialOrders(fallback));
+    // Cross-device: pull orders placed on other devices, then rebuild.
+    syncOrdersFromBackend().then((changed) => {
+      if (changed) rebuild();
+    });
+    return subscribeOrders(rebuild);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

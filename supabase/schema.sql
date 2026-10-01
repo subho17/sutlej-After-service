@@ -132,6 +132,15 @@ create table if not exists public.complaints (
                     check (status in ('pending', 'open', 'in-progress', 'resolved', 'closed')),
   history           jsonb       not null default '[]',  -- audit trail of status moves
   created_by        text,                      -- free-text author (legacy)
+  -- Portal sync payload (10_portal_sync.sql): free-text copy of the
+  -- localStorage record so every device sees the same tickets.
+  customer_name     text,
+  phone             text,
+  email             text,
+  vehicle_reg_no    text,
+  vehicle_model     text,
+  source            text,
+  owner_id          text,
   created_at        timestamptz not null default now(),
   updated_at        timestamptz not null default now()
 );
@@ -195,8 +204,18 @@ create table if not exists public.spare_orders (
   -- items: [{ partId, partName, partNumber, quantity, unitPrice }]
   total       numeric(10,2) not null default 0 check (total >= 0),
   status      text          not null default 'pending'
-              check (status in ('pending', 'processing', 'dispatched', 'delivered', 'cancelled')),
+               check (status in ('pending', 'processing', 'dispatched', 'delivered', 'cancelled')),
   created_by  text          not null default 'customer' check (created_by in ('customer', 'staff')),
+  -- Portal sync payload (10_portal_sync.sql): free-text copy of the
+  -- localStorage record so every device sees the same orders.
+  customer_name    text,
+  phone            text,
+  email            text,
+  vehicle_reg_no   text,
+  vehicle_model    text,
+  delivery_address text,
+  notes            text,
+  owner_id         text,
   created_at  timestamptz   not null default now(),
   updated_at  timestamptz   not null default now()
 );

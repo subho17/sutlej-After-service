@@ -1,15 +1,17 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { EmptyStateCard } from "./EmptyStateCard";
 import { StatCard } from "./StatCard";
 import {
-  findDirectoryCustomer,
+  fetchBackendCustomers,
+  findMergedDirectoryCustomer,
+  type BackendCustomer,
   type DirectoryCustomer,
 } from "@/lib/customersDirectory";
-import { subscribeComplaints } from "@/lib/complaintsStore";
-import { subscribeOrders } from "@/lib/ordersStore";
+import { subscribeComplaints, syncComplaintsFromBackend } from "@/lib/complaintsStore";
+import { subscribeOrders, syncOrdersFromBackend } from "@/lib/ordersStore";
 
 const STATUS_STYLES: Record<string, string> = {
   pending: "bg-amber-50 text-amber-700 border-amber-200",
@@ -28,15 +30,32 @@ function statusBadge(status: string): string {
 }
 
 export function CustomerProfile({ customerKey }: { customerKey: string }) {
-  const [customer, setCustomer] = useState<DirectoryCustomer | null>(() =>
-    findDirectoryCustomer(customerKey)
-  );
+  // SSR-safe: server renders the not-found state; client resolves after mount.
+  const [customer, setCustomer] = useState<DirectoryCustomer | null>(null);
+  const backendRef = useRef<BackendCustomer[]>([]);
 
   useEffect(() => {
-    const refresh = () => setCustomer(findDirectoryCustomer(customerKey));
-    const offComplaints = subscribeComplaints(refresh);
-    const offOrders = subscribeOrders(refresh);
+    let cancelled = false;
+    const refresh = (remote: BackendCustomer[]) =>
+      setCustomer(findMergedDirectoryCustomer(customerKey, remote));
+    refresh(backendRef.current);
+    // Cross-device: pull records created on other devices, then rebuild.
+    syncComplaintsFromBackend()
+      .then(() => syncOrdersFromBackend())
+      .then((changed) => {
+        if (changed) refresh(backendRef.current);
+      })
+      .catch(() => {});
+    fetchBackendCustomers().then((remote) => {
+      if (cancelled) return;
+      backendRef.current = remote;
+      refresh(remote);
+    });
+    const resub = () => refresh(backendRef.current);
+    const offComplaints = subscribeComplaints(resub);
+    const offOrders = subscribeOrders(resub);
     return () => {
+      cancelled = true;
       offComplaints();
       offOrders();
     };

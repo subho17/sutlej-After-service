@@ -138,6 +138,132 @@ export function saveComplaints(items: SharedComplaint[]): void {
   persist(items.map(normalizeComplaint));
 }
 
+// ---------------------------------------------------------------------------
+// Backend sync (cross-device). Local storage stays the interactive source of
+// truth; the backend (Supabase) is the shared copy every device merges.
+// All helpers fail silently offline — the portals keep working locally.
+// ---------------------------------------------------------------------------
+
+import { apiGet, apiPatch, apiPost } from "./api";
+
+/** Complaint row as returned by GET /api/complaints (Supabase). */
+export interface BackendComplaintRow {
+  id: string;
+  ticket_no: string | null;
+  title: string;
+  description: string;
+  customer_name: string | null;
+  phone: string | null;
+  email: string | null;
+  vehicle_reg_no: string | null;
+  vehicle_model: string | null;
+  category: string | null;
+  priority: string | null;
+  status: string | null;
+  source: string | null;
+  owner_id: string | null;
+  created_at: string;
+}
+
+function displayDateOf(iso: string): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  const months = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+  ];
+  return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function fromBackendRow(row: BackendComplaintRow): SharedComplaint {
+  return normalizeComplaint({
+    id: row.ticket_no || `srv-${String(row.id).slice(0, 8)}`,
+    title: row.title,
+    description: row.description,
+    customerName: row.customer_name,
+    ownerId: row.owner_id,
+    phoneNumber: row.phone,
+    email: row.email,
+    vehicleRegistrationNo: row.vehicle_reg_no,
+    model: row.vehicle_model,
+    category: row.category,
+    priority: row.priority,
+    status: row.status,
+    date: displayDateOf(row.created_at),
+    createdAt: row.created_at,
+    source: row.source,
+  } as RawComplaint);
+}
+
+/** Fire-and-forget: push a complaint to the backend shared copy. */
+export function pushComplaintToBackend(c: SharedComplaint): void {
+  apiPost("/api/complaints/portal", {
+    ticketNo: c.id,
+    title: c.title,
+    description: c.description,
+    customerName: c.customerName,
+    phone: c.phoneNumber,
+    email: c.email,
+    vehicleRegNo: c.vehicleRegistrationNo,
+    vehicleModel: c.model,
+    category: c.category,
+    priority: c.priority,
+    status: c.status,
+    source: c.source,
+    ownerId: c.ownerId,
+    createdAt: c.createdAt,
+  }).catch(() => {
+    // Offline / backend down: stays local, merges later.
+  });
+}
+
+/** Fire-and-forget: sync a staff status move to the backend. */
+export function pushComplaintStatusToBackend(ticketNo: string, status: string): void {
+  if (typeof window === "undefined") return;
+  const encoded = encodeURIComponent(ticketNo);
+  apiPatch(`/api/complaints/by-ticket/${encoded}/status`, { status }).catch(() => {
+    // Offline: stays local, retried on next status change.
+  });
+}
+
+let complaintsSyncAt = 0;
+let complaintsSyncInflight: Promise<boolean> | null = null;
+const COMPLAINTS_SYNC_TTL_MS = 30_000;
+
+/**
+ * Pull the backend shared copy and union it into localStorage.
+ * Local rows win on id conflict (local is the interactive copy; every
+ * write goes to both sides, so conflicts are rare). Returns true when
+ * new rows arrived. Deduped + 30s TTL so many components can call it.
+ */
+export function syncComplaintsFromBackend(force = false): Promise<boolean> {
+  if (typeof window === "undefined") return Promise.resolve(false);
+  const now = Date.now();
+  if (!force && now - complaintsSyncAt < COMPLAINTS_SYNC_TTL_MS) {
+    return Promise.resolve(false);
+  }
+  if (complaintsSyncInflight) return complaintsSyncInflight;
+  complaintsSyncInflight = (async () => {
+    try {
+      const { ok, body } = await apiGet<BackendComplaintRow[]>("/api/complaints");
+      if (!ok || !body) return false;
+      const rows = Array.isArray(body) ? body : body.data;
+      if (!Array.isArray(rows) || rows.length === 0) return false;
+      const seen = new Set(loadComplaints().map((c) => c.id));
+      const incoming = rows.map(fromBackendRow).filter((c) => !seen.has(c.id));
+      if (incoming.length === 0) return false;
+      saveComplaints([...loadComplaints(), ...incoming]);
+      return true;
+    } catch {
+      return false;
+    } finally {
+      complaintsSyncAt = Date.now();
+      complaintsSyncInflight = null;
+    }
+  })();
+  return complaintsSyncInflight;
+}
+
 type Listener = () => void;
 
 /**

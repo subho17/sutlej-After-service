@@ -27,10 +27,50 @@ export interface CustomerRow {
 
 export interface ComplaintRow {
   id: string;
+  ticket_no: string | null;
   title: string;
   description: string;
-  status: "pending" | "open" | "in-progress" | "resolved";
+  customer_id: string | null;
+  vehicle_id: string | null;
+  assigned_staff_id: string | null;
+  category: string | null;
+  priority: string;
+  status: "pending" | "open" | "in-progress" | "resolved" | "closed";
+  history: unknown;
   created_by: string | null;
+  customer_name: string | null;
+  phone: string | null;
+  email: string | null;
+  vehicle_reg_no: string | null;
+  vehicle_model: string | null;
+  source: string | null;
+  owner_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SpareOrderRow {
+  id: string;
+  order_no: string | null;
+  customer_id: string | null;
+  items: Array<{
+    partId?: string;
+    partName?: string;
+    partNumber?: string;
+    quantity?: number;
+    unitPrice?: number;
+  }>;
+  total: number | string;
+  status: "pending" | "processing" | "dispatched" | "delivered" | "cancelled";
+  created_by: string;
+  customer_name: string | null;
+  phone: string | null;
+  email: string | null;
+  vehicle_reg_no: string | null;
+  vehicle_model: string | null;
+  delivery_address: string | null;
+  notes: string | null;
+  owner_id: string | null;
   created_at: string;
   updated_at: string;
 }

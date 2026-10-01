@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   loadOrders,
   normalizeOrder,
+  pushOrderToBackend,
   saveOrders,
 } from "@/lib/ordersStore";
 
@@ -144,13 +145,16 @@ export function ShopSpares({ className = "" }: ShopSparesProps) {
     if (typeof window !== "undefined") {
       try {
         // Shared store: the order is visible to staff immediately.
+        const record = normalizeOrder({
+          ...newOrder,
+          createdAt: new Date().toISOString(),
+        });
         saveOrders([
-          normalizeOrder({
-            ...newOrder,
-            createdAt: new Date().toISOString(),
-          }),
+          record,
           ...loadOrders().filter((o) => o.id !== newOrder.id),
         ]);
+        // Cross-device: mirror to the backend shared copy (fire-and-forget).
+        pushOrderToBackend(record, "customer");
 
         sessionStorage.setItem("lastSubmittedOrder", orderId);
       } catch {

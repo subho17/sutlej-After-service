@@ -1,25 +1,48 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { EmptyStateCard } from "./EmptyStateCard";
 import {
   buildCustomerDirectory,
+  fetchBackendCustomers,
+  mergeBackendCustomers,
+  type BackendCustomer,
   type DirectoryCustomer,
 } from "@/lib/customersDirectory";
-import { subscribeComplaints } from "@/lib/complaintsStore";
-import { subscribeOrders } from "@/lib/ordersStore";
+import { subscribeComplaints, syncComplaintsFromBackend } from "@/lib/complaintsStore";
+import { subscribeOrders, syncOrdersFromBackend } from "@/lib/ordersStore";
 
 export function CustomersDirectory() {
-  const [customers, setCustomers] = useState<DirectoryCustomer[]>(buildCustomerDirectory);
+  // SSR-safe: server renders empty; client merges local + backend after mount.
+  const [customers, setCustomers] = useState<DirectoryCustomer[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const backendRef = useRef<BackendCustomer[]>([]);
 
   // Live sync: new complaints/orders reshape the directory instantly.
   useEffect(() => {
-    const refresh = () => setCustomers(buildCustomerDirectory());
+    let cancelled = false;
+    const rebuild = (remote: BackendCustomer[]) =>
+      setCustomers(mergeBackendCustomers(buildCustomerDirectory(), remote));
+    rebuild(backendRef.current);
+    // Cross-device: pull records created on other devices, then rebuild.
+    syncComplaintsFromBackend()
+      .then(() => syncOrdersFromBackend())
+      .then((changed) => {
+        if (changed) rebuild(backendRef.current);
+      })
+      .catch(() => {});
+    // Backend-registered customers (visible on every device).
+    fetchBackendCustomers().then((remote) => {
+      if (cancelled) return;
+      backendRef.current = remote;
+      rebuild(remote);
+    });
+    const refresh = () => rebuild(backendRef.current);
     const offComplaints = subscribeComplaints(refresh);
     const offOrders = subscribeOrders(refresh);
     return () => {
+      cancelled = true;
       offComplaints();
       offOrders();
     };

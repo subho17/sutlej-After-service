@@ -7,8 +7,10 @@ import { CustomSelect } from "./CustomSelect";
 import { apiPost } from "@/lib/api";
 import {
   loadComplaints as loadSharedComplaints,
+  pushComplaintStatusToBackend,
   saveComplaints as persistSharedComplaints,
   subscribeComplaints,
+  syncComplaintsFromBackend,
   type ComplaintStatus,
   type SharedComplaint,
 } from "@/lib/complaintsStore";
@@ -128,10 +130,14 @@ export function AllComplaints() {
   // and new complaints arrive live without refresh.
   const [complaints, setComplaints] = useState<SharedComplaint[]>(loadSharedComplaints);
 
-  useEffect(
-    () => subscribeComplaints(() => setComplaints(loadSharedComplaints())),
-    []
-  );
+  useEffect(() => {
+    const rebuild = () => setComplaints(loadSharedComplaints());
+    // Cross-device: pull tickets created on other devices, then rebuild.
+    syncComplaintsFromBackend().then((changed) => {
+      if (changed) rebuild();
+    });
+    return subscribeComplaints(rebuild);
+  }, []);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -141,6 +147,8 @@ export function AllComplaints() {
     const updated = complaints.map((c) => (c.id === id ? { ...c, status } : c));
     setComplaints(updated);
     persistSharedComplaints(updated);
+    // Cross-device: sync the status move to the backend (fire-and-forget).
+    pushComplaintStatusToBackend(id, status);
   };
 
   // Filter complaints

@@ -1,18 +1,14 @@
-// Staff-side customer directory, aggregated from local data.
+// Staff-side customer directory, aggregated from local data + backend.
 //
-// One entry per customer (keyed by phone, falling back to name), combining:
-// - complaints (their tickets + statuses)
-// - orders (their purchases + total spent)
-// - vehicle registration numbers seen across both
-// - activity history (newest first)
-//
-// NOTE (same-browser scope): this reflects data present in the STAFF
-// browser's shared stores. True cross-device profiles need the backend
-// (Phase 2/3) — until then, customer-portal entries appear here once this
-// browser has synced them (open both portals in this browser once).
+// Local complaints/orders (browser localStorage) are merged with the
+// backend customer list (GET /api/customers, Supabase), so staff on ANY
+// device/browser see every registered customer. Local-only activity
+// (complaints, orders) still shows only in the browser where it was
+// created — full cross-device activity sync needs backend write-through.
 
 import { loadComplaints, type SharedComplaint } from "./complaintsStore";
 import { loadOrders, type SharedOrder } from "./ordersStore";
+import { apiGet } from "./api";
 
 export interface CustomerHistoryEvent {
   date: string; // display date
@@ -41,6 +37,11 @@ function digits(v: string): string {
   return v.replace(/\D/g, "");
 }
 
+/** Stable lookup key shared by local + backend entries. */
+export function directoryKeyFor(name: string, phone: string): string {
+  return digits(phone || "") || `name:${(name || "").trim().toLowerCase()}`;
+}
+
 function parseTime(v: string): number {
   const t = new Date(v).getTime();
   return isNaN(t) ? 0 : t;
@@ -64,7 +65,7 @@ export function buildCustomerDirectory(): DirectoryCustomer[] {
   const lastSeen = new Map<string, number>();
 
   const entryFor = (name: string, phone: string): DirectoryCustomer => {
-    const key = digits(phone) || `name:${name.trim().toLowerCase()}`;
+    const key = directoryKeyFor(name, phone);
     let entry = map.get(key);
     if (!entry) {
       entry = {
@@ -145,4 +146,72 @@ export function buildCustomerDirectory(): DirectoryCustomer[] {
 
 export function findDirectoryCustomer(key: string): DirectoryCustomer | null {
   return buildCustomerDirectory().find((c) => c.key === key) ?? null;
+}
+
+/** Customer row as returned by GET /api/customers (Supabase). */
+export interface BackendCustomer {
+  id: string;
+  name: string;
+  customer_id?: string | null;
+  phone: string;
+  email?: string | null;
+  created_at?: string;
+}
+
+/** Fetch registered customers from the backend (empty when unreachable). */
+export async function fetchBackendCustomers(): Promise<BackendCustomer[]> {
+  try {
+    const { ok, body } = await apiGet<BackendCustomer[]>("/api/customers");
+    if (!ok || !body) return [];
+    const arr = Array.isArray(body) ? body : body.data;
+    return Array.isArray(arr) ? arr : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Union of local activity entries + backend-registered customers.
+ * Backend-only customers appear with empty complaints/orders so every
+ * device shows the full list.
+ */
+export function mergeBackendCustomers(
+  local: DirectoryCustomer[],
+  remote: BackendCustomer[]
+): DirectoryCustomer[] {
+  const map = new Map<string, DirectoryCustomer>(local.map((c) => [c.key, c]));
+  for (const r of remote) {
+    const key = directoryKeyFor(r.name ?? "", r.phone ?? "");
+    const existing = map.get(key);
+    if (existing) {
+      if (r.email && !existing.email) existing.email = r.email;
+      continue;
+    }
+    map.set(key, {
+      key,
+      name: r.name || "Walk-in customer",
+      phone: r.phone ?? "",
+      email: r.email ?? undefined,
+      vehicleRegNos: [],
+      complaints: [],
+      openComplaints: 0,
+      orders: [],
+      totalSpent: 0,
+      history: [],
+      lastActive: r.created_at ? displayDate(r.created_at) : "",
+    });
+  }
+  return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** Directory lookup across local + backend customers. */
+export function findMergedDirectoryCustomer(
+  key: string,
+  remote: BackendCustomer[] = []
+): DirectoryCustomer | null {
+  return (
+    mergeBackendCustomers(buildCustomerDirectory(), remote).find(
+      (c) => c.key === key
+    ) ?? null
+  );
 }

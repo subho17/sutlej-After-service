@@ -76,3 +76,19 @@ export async function apiDelete<T>(
 ): Promise<ApiResult<T>> {
   return request<T>(path, { method: "DELETE" }, timeoutMs);
 }
+
+export async function apiPatch<T>(
+  path: string,
+  body: unknown,
+  timeoutMs = DEFAULT_TIMEOUT_MS
+): Promise<ApiResult<T>> {
+  return request<T>(
+    path,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    },
+    timeoutMs
+  );
+}

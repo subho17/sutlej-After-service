@@ -6,8 +6,10 @@ import { EmptyStateCard } from "./EmptyStateCard";
 import {
   loadComplaints,
   subscribeComplaints,
+  syncComplaintsFromBackend,
   type SharedComplaint,
 } from "@/lib/complaintsStore";
+import { syncOrdersFromBackend } from "@/lib/ordersStore";
 
 export interface StaffDashboardProps {
   stats?: {
@@ -71,17 +73,24 @@ export function StaffDashboard({
 
   // Live sync: new complaints + status updates appear instantly, no refresh needed.
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setComplaints(loadComplaints());
-    setVehiclesDueSoon(
-      loadVehicles().filter((v) => {
-        const t = new Date(v.nextServiceDate).getTime();
-        if (Number.isNaN(t)) return false;
-        const diffDays = (t - Date.now()) / (24 * 60 * 60 * 1000);
-        return diffDays >= 0 && diffDays <= 14;
-      })
-    );
-    return subscribeComplaints(() => setComplaints(loadComplaints()));
+    const rebuild = () => setComplaints(loadComplaints());
+    const rebuildVehicles = () =>
+      setVehiclesDueSoon(
+        loadVehicles().filter((v) => {
+          const t = new Date(v.nextServiceDate).getTime();
+          if (Number.isNaN(t)) return false;
+          const diffDays = (t - Date.now()) / (24 * 60 * 60 * 1000);
+          return diffDays >= 0 && diffDays <= 14;
+        })
+      );
+    rebuild();
+    rebuildVehicles();
+    // Cross-device: pull records created on other devices, then rebuild.
+    syncComplaintsFromBackend().then((changed) => {
+      if (changed) rebuild();
+    });
+    syncOrdersFromBackend().catch(() => {});
+    return subscribeComplaints(rebuild);
   }, []);
 
   const live = useMemo(() => {
