@@ -71,13 +71,13 @@ export function LandingLoadingScreen({
     >
       {/* Soft Ambient Radial Light in Sutlej Brand Blue */}
       <div
-        className="absolute w-[460px] h-[460px] rounded-full bg-[#008CEE]/8 blur-[110px] pointer-events-none transition-opacity duration-1000"
+        className="absolute w-[min(70vw,460px)] h-[min(70vw,460px)] rounded-full bg-[#008CEE]/8 blur-[110px] pointer-events-none transition-opacity duration-1000"
         aria-hidden="true"
       />
 
       {/* Centered Logo with Entrance and Glowing Pulse Animation */}
-      <div className="relative z-10 flex flex-col items-center justify-center animate-logo-entry">
-        <div className="animate-logo-pulse flex flex-col items-center justify-center">
+      <div className="relative z-10 flex flex-col items-center justify-center animate-logo-entry px-4">
+        <div className="animate-logo-pulse flex flex-col items-center justify-center scale-75 sm:scale-90 md:scale-100 origin-center">
           <SutlejLogo
             size={size}
             theme="light"

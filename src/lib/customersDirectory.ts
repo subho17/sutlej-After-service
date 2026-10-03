@@ -62,8 +62,10 @@ export function buildCustomerDirectory(): DirectoryCustomer[] {
   const map = new Map<string, DirectoryCustomer>();
   const lastSeen = new Map<string, number>();
 
-  const entryFor = (name: string, phone: string): DirectoryCustomer => {
-    const key = directoryKeyFor(name, phone);
+  const entryFor = (name: string, phone: string, ownerId?: string): DirectoryCustomer => {
+    // Group by account id when available so two customers sharing the
+    // same (or default) phone number never merge into one profile.
+    const key = ownerId ? `uid:${ownerId}` : directoryKeyFor(name, phone);
     let entry = map.get(key);
     if (!entry) {
       entry = {
@@ -95,7 +97,7 @@ export function buildCustomerDirectory(): DirectoryCustomer[] {
   };
 
   for (const c of complaints) {
-    const e = entryFor(c.customerName, c.phoneNumber);
+    const e = entryFor(c.customerName, c.phoneNumber, c.ownerId);
     if (c.email && !e.email) e.email = c.email;
     e.complaints.push(c);
     if (c.status === "open" || c.status === "pending" || c.status === "in-progress") {
@@ -117,7 +119,7 @@ export function buildCustomerDirectory(): DirectoryCustomer[] {
   }
 
   for (const o of orders) {
-    const e = entryFor(o.customerName, o.phoneNumber);
+    const e = entryFor(o.customerName, o.phoneNumber, o.ownerId);
     if (o.email && !e.email) e.email = o.email;
     e.orders.push(o);
     e.totalSpent += Number(o.totalAmount) || 0;
