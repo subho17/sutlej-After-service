@@ -26,18 +26,6 @@ function getInitialOrders(fallback: CustomerOrder[]): CustomerOrder[] {
   // Privacy: each user sees only their own orders (staff sees all).
   const shared = visibleRecords(loadOrders());
   if (shared.length > 0) return shared as unknown as CustomerOrder[];
-  if (typeof window === "undefined") return visibleRecords(fallback);
-  try {
-    const saved = localStorage.getItem("sutlej_customer_orders");
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed)) {
-        return visibleRecords(parsed);
-      }
-    }
-  } catch {
-    // Ignore storage errors
-  }
   return visibleRecords(fallback);
 }
 

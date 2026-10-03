@@ -1,10 +1,8 @@
 // Staff-side customer directory, aggregated from local data + backend.
 //
-// Local complaints/orders (browser localStorage) are merged with the
+// Complaints/orders (in-memory, synced from Supabase) are merged with the
 // backend customer list (GET /api/customers, Supabase), so staff on ANY
-// device/browser see every registered customer. Local-only activity
-// (complaints, orders) still shows only in the browser where it was
-// created — full cross-device activity sync needs backend write-through.
+// device/browser see every registered customer.
 
 import { loadComplaints, type SharedComplaint } from "./complaintsStore";
 import { loadOrders, type SharedOrder } from "./ordersStore";

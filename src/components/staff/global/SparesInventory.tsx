@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { apiDelete, apiGet, apiPatch, apiPost } from "@/lib/api";
 
 export interface SparePart {
   id: string;
@@ -10,40 +11,38 @@ export interface SparePart {
   stock: number;
 }
 
-const DEFAULT_SPARES: SparePart[] = [
-  { id: "SP-001", name: "12V Deep Cycle Battery", category: "Battery", price: 6500, stock: 15 },
-  { id: "SP-002", name: "48V Onboard Battery Charger", category: "Battery", price: 8200, stock: 10 },
-  { id: "SP-003", name: "Golf Cart Tire 18×8.5-8", category: "Tires & Wheels", price: 2400, stock: 24 },
-  { id: "SP-004", name: "Wheel Bearing Set", category: "Tires & Wheels", price: 950, stock: 30 },
-  { id: "SP-005", name: "DC Motor Speed Controller", category: "Electrical", price: 11500, stock: 8 },
-  { id: "SP-006", name: "Forward/Reverse Solenoid", category: "Electrical", price: 1800, stock: 20 },
-  { id: "SP-007", name: "Rear Shock Absorber", category: "Suspension", price: 3200, stock: 12 },
-  { id: "SP-008", name: "Heavy Duty Leaf Spring", category: "Suspension", price: 4500, stock: 14 },
-  { id: "SP-009", name: "Brake Shoe Set (Front/Rear)", category: "Brakes", price: 1650, stock: 22 },
-  { id: "SP-010", name: "LED Headlight & Taillight Kit", category: "Electrical", price: 5400, stock: 18 },
-  { id: "SP-011", name: "Key Switch with 2 Keys", category: "Electrical", price: 750, stock: 35 },
-  { id: "SP-012", name: "Drive Belt (Heavy Duty)", category: "Powertrain", price: 1950, stock: 16 },
-  { id: "SP-013", name: "Steering Rack & Pinion Assembly", category: "Steering", price: 7800, stock: 6 },
-  { id: "SP-014", name: "Acrylic Split Windshield", category: "Body & Accessories", price: 6200, stock: 9 },
-  { id: "SP-015", name: "Side View Mirrors Set", category: "Body & Accessories", price: 1250, stock: 25 },
-];
+interface SparePartRow {
+  sku: string;
+  name: string;
+  category: string;
+  price: number;
+  stock: number;
+}
 
-function loadParts(): SparePart[] {
-  if (typeof window === "undefined") return DEFAULT_SPARES;
-  try {
-    const stored = localStorage.getItem("staffSparesInventory");
-    if (stored) return JSON.parse(stored) as SparePart[];
-    localStorage.setItem("staffSparesInventory", JSON.stringify(DEFAULT_SPARES));
-    return DEFAULT_SPARES;
-  } catch {
-    // Fallback to default
-    return DEFAULT_SPARES;
-  }
+function fromRow(row: SparePartRow): SparePart {
+  return { id: row.sku, name: row.name, category: row.category, price: Number(row.price), stock: Number(row.stock) };
 }
 
 export function SparesInventory() {
-  const [parts, setParts] = useState<SparePart[]>(loadParts);
+  const [parts, setParts] = useState<SparePart[]>([]);
+  const [loading, setLoading] = useState(true);
   const [savedId, setSavedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    apiGet<SparePartRow[]>("/api/spare-parts")
+      .then(({ ok, body }) => {
+        if (cancelled || !ok || !body?.data) return;
+        setParts(body.data.map(fromRow));
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // New Part Form State
   const [newName, setNewName] = useState("");
@@ -52,17 +51,8 @@ export function SparesInventory() {
   const [newStock, setNewStock] = useState("");
   const [addError, setAddError] = useState<string | null>(null);
 
-  const saveToStorage = (updated: SparePart[]) => {
-    setParts(updated);
-    try {
-      localStorage.setItem("staffSparesInventory", JSON.stringify(updated));
-    } catch {
-      // storage error
-    }
-  };
-
   // Add Part Handler
-  const handleAddPart = (e: React.FormEvent) => {
+  const handleAddPart = async (e: React.FormEvent) => {
     e.preventDefault();
     setAddError(null);
 
@@ -88,16 +78,19 @@ export function SparesInventory() {
     const nextIndex = parts.length + 1;
     const nextId = `SP-${nextIndex.toString().padStart(3, "0")}`;
 
-    const newPart: SparePart = {
-      id: nextId,
+    const { ok, body } = await apiPost<SparePartRow>("/api/spare-parts", {
+      sku: nextId,
       name: newName.trim(),
       category: newCategory.trim(),
       price: priceNum,
       stock: stockNum,
-    };
-
-    const updated = [newPart, ...parts];
-    saveToStorage(updated);
+    });
+    if (ok && body?.data) {
+      setParts((prev) => [fromRow(body.data as SparePartRow), ...prev]);
+    } else {
+      setAddError("Could not save to the server. Please try again.");
+      return;
+    }
 
     // Reset Form
     setNewName("");
@@ -123,19 +116,27 @@ export function SparesInventory() {
   };
 
   // Save Row
-  const handleSaveRow = (id: string) => {
-    saveToStorage(parts);
-    setSavedId(id);
-    setTimeout(() => {
-      setSavedId(null);
-    }, 1500);
+  const handleSaveRow = async (id: string) => {
+    const row = parts.find((p) => p.id === id);
+    if (!row) return;
+    const { ok, body } = await apiPatch<SparePartRow>(`/api/spare-parts/${encodeURIComponent(id)}`, {
+      name: row.name,
+      category: row.category,
+      price: row.price,
+      stock: row.stock,
+    });
+    if (ok && body?.data) {
+      setParts((prev) => prev.map((p) => (p.id === id ? fromRow(body.data as SparePartRow) : p)));
+      setSavedId(id);
+      setTimeout(() => setSavedId(null), 1500);
+    }
   };
 
   // Delete Row
-  const handleDeleteRow = (id: string) => {
+  const handleDeleteRow = async (id: string) => {
     if (confirm("Are you sure you want to delete this part from the inventory?")) {
-      const updated = parts.filter((item) => item.id !== id);
-      saveToStorage(updated);
+      setParts((prev) => prev.filter((item) => item.id !== id));
+      await apiDelete(`/api/spare-parts/${encodeURIComponent(id)}`).catch(() => {});
     }
   };
 
@@ -252,6 +253,9 @@ export function SparesInventory() {
 
         {/* Spares Inventory Rows */}
         <div className="space-y-3">
+          {loading && (
+            <p className="text-sm text-slate-500">Loading inventory…</p>
+          )}
           {parts.map((item) => (
             <div
               key={item.id}

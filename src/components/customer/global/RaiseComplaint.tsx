@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { apiGet } from "@/lib/api";
 import {
   loadComplaints,
   normalizeComplaint,
@@ -30,23 +31,9 @@ export const COMPLAINT_CATEGORIES = [
 
 export const PRIORITY_OPTIONS = ["Low", "Medium", "High", "Critical / Urgent"];
 
-function getSavedVehicles(): VehicleOption[] {
-  if (typeof window === "undefined") return DEFAULT_VEHICLES;
-  try {
-    const saved = localStorage.getItem("sutlej_customer_vehicles");
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed.map((v: { registrationNo: string; model: string }) => ({
-          registrationNo: v.registrationNo,
-          model: v.model,
-        }));
-      }
-    }
-  } catch {
-    // Ignore storage errors
-  }
-  return DEFAULT_VEHICLES;
+interface VehicleRow {
+  reg_no: string;
+  model: string;
 }
 
 export interface RaiseComplaintProps {
@@ -69,7 +56,23 @@ export function RaiseComplaint({
 }: RaiseComplaintProps) {
   const router = useRouter();
 
-  const [vehicles] = useState<VehicleOption[]>(() => getSavedVehicles());
+  const [vehicles, setVehicles] = useState<VehicleOption[]>(DEFAULT_VEHICLES);
+
+  useEffect(() => {
+    let cancelled = false;
+    apiGet<VehicleRow[]>("/api/vehicles")
+      .then(({ ok, body }) => {
+        if (cancelled || !ok || !body?.data || body.data.length === 0) return;
+        setVehicles(
+          body.data.map((v) => ({ registrationNo: v.reg_no, model: v.model }))
+        );
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const [selectedVehicleIndex, setSelectedVehicleIndex] = useState(0);
 
   const currentVehicle = vehicles[selectedVehicleIndex] || vehicles[0] || {

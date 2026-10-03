@@ -1,8 +1,8 @@
-// Single source of truth for announcements/offers (staff + customer).
-//
-// Background: staff published to `staffAnnouncements` while the customer
-// dashboard never read any key at all — so published announcements never
-// appeared in the portal. Everything now goes through load/save below.
+// Announcements (offers/greetings) — backed by the Supabase API.
+// No localStorage: staff posts and customer views always read the same
+// server copy so the portal works across devices.
+
+import { apiDelete, apiGet, apiPost } from "./api";
 
 export interface Announcement {
   id: string;
@@ -12,95 +12,42 @@ export interface Announcement {
   active: boolean;
 }
 
-const SHARED_KEY = "sutlej_announcements";
-
-// Legacy keys from before the unification (kept as mirrors for safety).
-const LEGACY_KEYS = ["staffAnnouncements", "customerAnnouncements"] as const;
-
-type RawAnnouncement = Partial<Announcement> & { id: string };
-
-function asArray(value: unknown): RawAnnouncement[] {
-  if (!Array.isArray(value)) return [];
-  return value.filter(
-    (o): o is RawAnnouncement => typeof o === "object" && o !== null && "id" in o
-  );
+interface AnnouncementPayload {
+  id: string;
+  title: string;
+  message: string;
+  createdAt: string;
+  active: boolean;
 }
 
-function readKey(key: string): RawAnnouncement[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? asArray(JSON.parse(raw)) : [];
-  } catch {
-    return [];
-  }
-}
-
-export function normalizeAnnouncement(raw: RawAnnouncement): Announcement {
+function toAnnouncement(p: AnnouncementPayload): Announcement {
   return {
-    id: String(raw.id),
-    title: typeof raw.title === "string" ? raw.title : "",
-    message: typeof raw.message === "string" ? raw.message : "",
-    createdAt:
-      typeof raw.createdAt === "string" && raw.createdAt
-        ? raw.createdAt
-        : new Date().toISOString(),
-    active: raw.active !== false,
+    id: String(p.id),
+    title: p.title ?? "",
+    message: p.message ?? "",
+    createdAt: p.createdAt ?? new Date().toISOString(),
+    active: p.active !== false,
   };
 }
 
-/**
- * Load all announcements. First call migrates legacy keys into the shared
- * key (deduplicated by id).
- */
-export function loadAnnouncements(): Announcement[] {
-  const shared = readKey(SHARED_KEY);
-  if (shared.length > 0) return shared.map(normalizeAnnouncement);
-
-  const merged = new Map<string, RawAnnouncement>();
-  for (const key of LEGACY_KEYS) {
-    for (const item of readKey(key)) merged.set(item.id, item);
-  }
-  const items = [...merged.values()].map(normalizeAnnouncement);
-  if (items.length > 0) persist(items);
-  return items;
+/** Fetch announcements. `activeOnly` (default) returns only live ones for the portal. */
+export async function fetchAnnouncements(activeOnly = true): Promise<Announcement[]> {
+  const path = activeOnly ? "/api/announcements" : "/api/announcements?active=all";
+  const { ok, body } = await apiGet<AnnouncementPayload[]>(path);
+  if (!ok || !body?.data) return [];
+  return body.data.map(toAnnouncement);
 }
 
-function persist(items: Announcement[]): void {
-  if (typeof window === "undefined") return;
+export async function postAnnouncement(title: string, message: string): Promise<Announcement | null> {
+  const { ok, body } = await apiPost<AnnouncementPayload>("/api/announcements", { title, message });
+  return ok && body?.data ? toAnnouncement(body.data) : null;
+}
+
+export async function removeAnnouncement(id: string): Promise<boolean> {
   try {
-    const json = JSON.stringify(items);
-    localStorage.setItem(SHARED_KEY, json);
-    // Mirror to legacy keys for any old code paths still reading them.
-    for (const key of LEGACY_KEYS) localStorage.setItem(key, json);
+    await apiDelete(`/api/announcements/${encodeURIComponent(id)}`);
+    return true;
   } catch {
-    // Ignore storage errors (private mode, quota).
+    return false;
   }
-}
-
-/** Save announcements — visible to BOTH staff and customer immediately. */
-export function saveAnnouncements(items: Announcement[]): void {
-  persist(items.map(normalizeAnnouncement));
-}
-
-type Listener = () => void;
-
-/**
- * Cross-tab live sync: fires in every OTHER open tab when this tab saves,
- * so the other portal updates instantly without refresh.
- * (Same-tab updates already happen via setState on save.)
- */
-export function subscribeAnnouncements(listener: Listener): () => void {
-  if (typeof window === "undefined") return () => {};
-  const handler = (e: StorageEvent) => {
-    if (
-      e.key === null ||
-      e.key === SHARED_KEY ||
-      (LEGACY_KEYS as readonly string[]).includes(e.key)
-    ) {
-      listener();
-    }
-  };
-  window.addEventListener("storage", handler);
-  return () => window.removeEventListener("storage", handler);
 }

@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
-import { currentCustomerId } from "@/lib/ownership";
+import React, { useEffect, useState } from "react";
+import { apiGet, apiPost } from "@/lib/api";
 
 export interface Vehicle {
   id: string;
@@ -13,64 +13,58 @@ export interface Vehicle {
   ownerId?: string;
 }
 
-const DEFAULT_VEHICLES: Vehicle[] = [
-  {
-    id: "veh-1",
-    registrationNo: "PB-10-GC-PT",
-    model: "club car tempo",
-    purchaseDate: "27 Sep 2026",
-    nextServiceDate: "27 Dec 2026",
-  },
-];
+interface VehicleRow {
+  id: string;
+  customer_id: string;
+  reg_no: string;
+  model: string;
+  created_at: string;
+  next_service_at: string | null;
+}
+
+function formatDate(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+}
+
+function fromRow(row: VehicleRow): Vehicle {
+  return {
+    id: row.id,
+    registrationNo: row.reg_no,
+    model: row.model,
+    purchaseDate: formatDate(row.created_at),
+    nextServiceDate: formatDate(row.next_service_at),
+    ownerId: row.customer_id,
+  };
+}
 
 export interface MyVehiclesProps {
   initialVehicles?: Vehicle[];
   className?: string;
 }
 
-/**
- * MyVehicles Global Component
- * Matches the official Sutlej Customer Portal 'My vehicles' page.
- * Features:
- * - Counter header: "My vehicles (N)"
- * - Vehicle cards with Royal Plum left accent border, model & registration details, and green next service date
- * - Add vehicle form (Registration no, Model, Purchase / registration date)
- * - Dynamic addition of new vehicles with automatic 3-month next quarterly service calculation
- */
-function getInitialVehicles(fallback: Vehicle[]): Vehicle[] {
-  // Privacy: each user sees only their own vehicles.
-  // Vehicles carry no name field, so legacy rows without an owner stay
-  // visible; only rows owned by a *different* account are hidden.
-  const myId = currentCustomerId();
-  const visible = (list: Vehicle[]) =>
-    !myId ? list : list.filter((v) => !v.ownerId || v.ownerId === myId);
-
-  if (typeof window === "undefined") return visible(fallback);
-  try {
-    const saved = localStorage.getItem("sutlej_customer_vehicles");
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return visible(parsed);
-      }
-    }
-  } catch {
-    // Ignore storage errors
-  }
-  return visible(fallback);
-}
-
 export function MyVehicles({
-  initialVehicles,
   className = "",
 }: MyVehiclesProps) {
-  const [vehicles, setVehicles] = useState<Vehicle[]>(() => {
-    const fallback =
-      initialVehicles && initialVehicles.length > 0
-        ? initialVehicles
-        : DEFAULT_VEHICLES;
-    return getInitialVehicles(fallback);
-  });
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    apiGet<VehicleRow[]>("/api/vehicles")
+      .then(({ ok, body }) => {
+        if (cancelled || !ok || !body?.data) return;
+        setVehicles(body.data.map(fromRow));
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const [registrationNo, setRegistrationNo] = useState("");
   const [model, setModel] = useState("");
@@ -78,16 +72,7 @@ export function MyVehicles({
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const saveVehicles = (updated: Vehicle[]) => {
-    setVehicles(updated);
-    try {
-      localStorage.setItem("sutlej_customer_vehicles", JSON.stringify(updated));
-    } catch {
-      // Ignore storage errors
-    }
-  };
-
-  const handleAddVehicle = (e: React.FormEvent) => {
+  const handleAddVehicle = async (e: React.FormEvent) => {
     e.preventDefault();
     setSuccessMessage(null);
     setErrorMessage(null);
@@ -104,49 +89,22 @@ export function MyVehicles({
       return;
     }
 
-    // Format dates
-    let formattedRegDate = "Registered today";
-    let formattedNextDate = "In 3 months";
+    // Next quarterly service (+3 months) from purchase/registration date.
+    const base = purchaseDate ? new Date(purchaseDate) : new Date();
+    const nextDate = new Date(isNaN(base.getTime()) ? new Date() : base);
+    nextDate.setMonth(nextDate.getMonth() + 3);
 
-    if (purchaseDate) {
-      const pDate = new Date(purchaseDate);
-      if (!isNaN(pDate.getTime())) {
-      const months = [
-        "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-      ];
-      formattedRegDate = `Registered ${pDate.getDate()} ${months[pDate.getMonth()]} ${pDate.getFullYear()}`;
-
-        // Next quarterly service (+3 months)
-        const nDate = new Date(pDate);
-        nDate.setMonth(nDate.getMonth() + 3);
-        formattedNextDate = `${nDate.getDate()} ${months[nDate.getMonth()]} ${nDate.getFullYear()}`;
-      }
-    } else {
-      const now = new Date();
-      const months = [
-        "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-      ];
-      formattedRegDate = `Registered ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
-      const nextQuarter = new Date(now);
-      nextQuarter.setMonth(nextQuarter.getMonth() + 3);
-      formattedNextDate = `${nextQuarter.getDate()} ${months[nextQuarter.getMonth()]} ${nextQuarter.getFullYear()}`;
-    }
-
-    const newVehicle: Vehicle = {
-      id: `veh-${Date.now()}`,
-      registrationNo: reg,
+    const { ok, body } = await apiPost<VehicleRow>("/api/vehicles", {
+      reg_no: reg,
       model: mdl,
-      purchaseDate: formattedRegDate,
-      nextServiceDate: formattedNextDate,
-      ownerId:
-        (typeof window !== "undefined" && sessionStorage.getItem("customerId")) ||
-        undefined,
-    };
-
-    const updated = [...vehicles, newVehicle];
-    saveVehicles(updated);
+      next_service_at: nextDate.toISOString(),
+    });
+    if (ok && body?.data) {
+      setVehicles((prev) => [fromRow(body.data as VehicleRow), ...prev]);
+    } else {
+      setErrorMessage("Could not save to the server. Please try again.");
+      return;
+    }
 
     setRegistrationNo("");
     setModel("");
@@ -175,6 +133,9 @@ export function MyVehicles({
 
         {/* ================= VEHICLE CARDS LIST ================= */}
         <div className="space-y-4">
+          {loading && (
+            <p className="text-sm text-gray-500">Loading your vehicles…</p>
+          )}
           {vehicles.map((v) => (
             <div
               key={v.id}

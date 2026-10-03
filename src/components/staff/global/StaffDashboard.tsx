@@ -10,6 +10,7 @@ import {
   type SharedComplaint,
 } from "@/lib/complaintsStore";
 import { syncOrdersFromBackend } from "@/lib/ordersStore";
+import { apiGet } from "@/lib/api";
 
 export interface StaffDashboardProps {
   stats?: {
@@ -29,21 +30,22 @@ interface DashboardVehicle {
   nextServiceDate: string;
 }
 
-/** Staff sees every vehicle saved in this browser (localStorage is per-origin). */
-function loadVehicles(): DashboardVehicle[] {
-  if (typeof window === "undefined") return [];
+interface VehicleRow {
+  reg_no: string;
+  model: string;
+  next_service_at: string | null;
+}
+
+/** Staff sees every vehicle (from the backend / Supabase). */
+async function loadVehicles(): Promise<DashboardVehicle[]> {
   try {
-    const raw = localStorage.getItem("sutlej_customer_vehicles");
-    if (!raw) return [];
-    const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter(
-      (v): v is DashboardVehicle =>
-        typeof v === "object" &&
-        v !== null &&
-        "registrationNo" in v &&
-        "nextServiceDate" in v
-    );
+    const { ok, body } = await apiGet<VehicleRow[]>("/api/vehicles");
+    if (!ok || !body?.data) return [];
+    return body.data.map((v) => ({
+      registrationNo: v.reg_no,
+      model: v.model,
+      nextServiceDate: v.next_service_at ?? "",
+    }));
   } catch {
     return [];
   }
@@ -67,7 +69,7 @@ export function StaffDashboard({
 }: StaffDashboardProps) {
   // SSR-safe: server renders empty (matching `loadComplaints()` on the
   // server, which returns [] without `window`). The client syncs from
-  // localStorage after mount — this cascading render is intentional.
+  // After mount: this cascading render is intentional.
   const [complaints, setComplaints] = useState<SharedComplaint[]>([]);
   const [vehiclesDueSoon, setVehiclesDueSoon] = useState<DashboardVehicle[]>([]);
 
@@ -75,13 +77,15 @@ export function StaffDashboard({
   useEffect(() => {
     const rebuild = () => setComplaints(loadComplaints());
     const rebuildVehicles = () =>
-      setVehiclesDueSoon(
-        loadVehicles().filter((v) => {
-          const t = new Date(v.nextServiceDate).getTime();
-          if (Number.isNaN(t)) return false;
-          const diffDays = (t - Date.now()) / (24 * 60 * 60 * 1000);
-          return diffDays >= 0 && diffDays <= 14;
-        })
+      loadVehicles().then((rows) =>
+        setVehiclesDueSoon(
+          rows.filter((v) => {
+            const t = new Date(v.nextServiceDate).getTime();
+            if (Number.isNaN(t)) return false;
+            const diffDays = (t - Date.now()) / (24 * 60 * 60 * 1000);
+            return diffDays >= 0 && diffDays <= 14;
+          })
+        )
       );
     rebuild();
     rebuildVehicles();

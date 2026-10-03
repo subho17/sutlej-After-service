@@ -6,8 +6,11 @@ export function CookieConsent() {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    // Check if the user has already accepted or declined cookies
-    const consent = localStorage.getItem("sutlej_cookie_consent");
+    // Check if the user has already accepted or declined cookies (stored in a cookie)
+    const consent = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("sutlej_cookie_consent="))
+      ?.split("=")[1];
     if (!consent) {
       // Small delay for better UX
       const timer = setTimeout(() => setIsVisible(true), 1000);
@@ -16,12 +19,12 @@ export function CookieConsent() {
   }, []);
 
   const handleAccept = () => {
-    localStorage.setItem("sutlej_cookie_consent", "accepted");
+    document.cookie = "sutlej_cookie_consent=accepted; path=/; max-age=31536000; SameSite=Lax";
     setIsVisible(false);
   };
 
   const handleDecline = () => {
-    localStorage.setItem("sutlej_cookie_consent", "declined");
+    document.cookie = "sutlej_cookie_consent=declined; path=/; max-age=31536000; SameSite=Lax";
     setIsVisible(false);
   };
 

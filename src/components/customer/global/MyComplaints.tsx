@@ -54,18 +54,6 @@ function getInitialComplaints(fallback: CustomerComplaint[]): CustomerComplaint[
       description: c.description,
     }));
   }
-  if (typeof window === "undefined") return visibleRecords(fallback);
-  try {
-    const saved = localStorage.getItem("sutlej_customer_complaints");
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return visibleRecords(parsed);
-      }
-    }
-  } catch {
-    // Ignore storage errors
-  }
   return visibleRecords(fallback);
 }
 

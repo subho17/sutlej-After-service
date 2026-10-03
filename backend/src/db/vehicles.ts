@@ -29,3 +29,14 @@ export async function createVehicle(input: {
   if (error) throw error;
   return data as VehicleRow;
 }
+
+export async function listVehicles(customerId?: string): Promise<VehicleRow[]> {
+  let query = supabaseAdmin()
+    .from("vehicles")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (customerId) query = query.eq("customer_id", customerId);
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data ?? []) as VehicleRow[];
+}

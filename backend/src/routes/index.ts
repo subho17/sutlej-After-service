@@ -5,6 +5,8 @@ import customerRoutes from "./customer.routes.js";
 import complaintRoutes from "./complaint.routes.js";
 import orderRoutes from "./order.routes.js";
 import announcementRoutes from "./announcement.routes.js";
+import vehicleRoutes from "./vehicle.routes.js";
+import sparePartRoutes from "./sparePart.routes.js";
 
 const router = Router();
 
@@ -19,5 +21,7 @@ router.use("/customers", customerRoutes);
 router.use("/complaints", complaintRoutes);
 router.use("/orders", orderRoutes);
 router.use("/announcements", announcementRoutes);
+router.use("/vehicles", vehicleRoutes);
+router.use("/spare-parts", sparePartRoutes);
 
 export default router;

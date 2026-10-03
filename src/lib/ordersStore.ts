@@ -1,9 +1,8 @@
 // Single source of truth for spare-part orders (staff + customer).
 //
-// Background: staff wrote `staffSparePartOrders` while the customer portal
-// read `sutlej_customer_orders`, so staff status updates (Delivered, …)
-// never appeared for customers. Everything now goes through load/save
-// below, which read + write ONE shared key and one-time migrate legacy keys.
+// No localStorage: the in-memory cache below is the interactive source of
+// truth, and the backend (Supabase) is the shared copy every device syncs
+// with. On a fresh load the cache is populated by syncOrdersFromBackend().
 
 export interface SharedOrderItem {
   partId?: string;
@@ -32,35 +31,7 @@ export interface SharedOrder {
   notes?: string;
 }
 
-const SHARED_KEY = "sutlej_spare_orders";
-
-// Legacy keys from before the unification (kept as mirrors for safety).
-// Order matters for migration: later keys win, so the staff copy
-// (which carries status updates) takes precedence.
-const LEGACY_KEYS = [
-  "customerOrders",
-  "sutlej_customer_orders",
-  "staffSparePartOrders",
-] as const;
-
 type RawOrder = Partial<SharedOrder> & { id: string };
-
-function asArray(value: unknown): RawOrder[] {
-  if (!Array.isArray(value)) return [];
-  return value.filter(
-    (o): o is RawOrder => typeof o === "object" && o !== null && "id" in o
-  );
-}
-
-function readKey(key: string): RawOrder[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? asArray(JSON.parse(raw)) : [];
-  } catch {
-    return [];
-  }
-}
 
 /** Fill missing fields so staff- and customer-shaped orders both render. */
 export function normalizeOrder(raw: RawOrder): SharedOrder {
@@ -108,44 +79,32 @@ export function normalizeOrder(raw: RawOrder): SharedOrder {
   };
 }
 
-/**
- * Load all orders. First call migrates legacy keys into the shared key
- * (deduplicated by id — later keys win, so staff edits take precedence).
- */
-export function loadOrders(): SharedOrder[] {
-  const shared = readKey(SHARED_KEY);
-  if (shared.length > 0) return shared.map(normalizeOrder);
+// ---------------------------------------------------------------------------
+// In-memory cache + same-tab listeners
+// ---------------------------------------------------------------------------
 
-  const merged = new Map<string, RawOrder>();
-  for (const key of LEGACY_KEYS) {
-    for (const order of readKey(key)) merged.set(order.id, order);
-  }
-  const orders = [...merged.values()].map(normalizeOrder);
-  if (orders.length > 0) persist(orders);
-  return orders;
+let ordersCache: SharedOrder[] = [];
+type Listener = () => void;
+const orderListeners = new Set<Listener>();
+
+function notifyOrderListeners(): void {
+  for (const listener of orderListeners) listener();
 }
 
-function persist(orders: SharedOrder[]): void {
-  if (typeof window === "undefined") return;
-  try {
-    const json = JSON.stringify(orders);
-    localStorage.setItem(SHARED_KEY, json);
-    // Mirror to legacy keys for any old code paths still reading them.
-    for (const key of LEGACY_KEYS) localStorage.setItem(key, json);
-  } catch {
-    // Ignore storage errors (private mode, quota).
-  }
+/** Load all orders (in-memory; populated by backend sync). */
+export function loadOrders(): SharedOrder[] {
+  return ordersCache;
 }
 
 /** Save orders — visible to BOTH staff and customer immediately. */
 export function saveOrders(orders: SharedOrder[]): void {
-  persist(orders.map(normalizeOrder));
+  ordersCache = orders.map(normalizeOrder);
+  notifyOrderListeners();
 }
 
 // ---------------------------------------------------------------------------
-// Backend sync (cross-device). Local storage stays the interactive source of
-// truth; the backend (Supabase) is the shared copy every device merges.
-// All helpers fail silently offline — the portals keep working locally.
+// Backend sync (cross-device). The backend (Supabase) is the shared copy.
+// All helpers fail silently offline — the portals keep working in memory.
 // ---------------------------------------------------------------------------
 
 import { apiGet, apiPatch, apiPost } from "./api";
@@ -215,7 +174,7 @@ export function pushOrderToBackend(o: SharedOrder, createdBy?: string): void {
     createdBy,
     createdAt: o.createdAt,
   }).catch(() => {
-    // Offline / backend down: stays local, merges later.
+    // Offline / backend down: kept in memory, merges later.
   });
 }
 
@@ -224,7 +183,7 @@ export function pushOrderStatusToBackend(orderNo: string, status: string): void 
   if (typeof window === "undefined") return;
   const encoded = encodeURIComponent(orderNo);
   apiPatch(`/api/orders/by-no/${encoded}/status`, { status }).catch(() => {
-    // Offline: stays local, retried on next status change.
+    // Offline: kept in memory, retried on next status change.
   });
 }
 
@@ -233,9 +192,9 @@ let ordersSyncInflight: Promise<boolean> | null = null;
 const ORDERS_SYNC_TTL_MS = 30_000;
 
 /**
- * Pull the backend shared copy and union it into localStorage.
- * Local rows win on id conflict. Returns true when new rows arrived.
- * Deduped + 30s TTL so many components can call it.
+ * Pull the backend shared copy and merge it into the in-memory cache.
+ * Local rows win on id conflict (local is the interactive copy). Returns
+ * true when new rows arrived. Deduped + 30s TTL so many can call it.
  */
 export function syncOrdersFromBackend(force = false): Promise<boolean> {
   if (typeof window === "undefined") return Promise.resolve(false);
@@ -250,10 +209,11 @@ export function syncOrdersFromBackend(force = false): Promise<boolean> {
       if (!ok || !body) return false;
       const rows = Array.isArray(body) ? body : body.data;
       if (!Array.isArray(rows) || rows.length === 0) return false;
-      const seen = new Set(loadOrders().map((o) => o.id));
+      const seen = new Set(ordersCache.map((o) => o.id));
       const incoming = rows.map(fromBackendRow).filter((o) => !seen.has(o.id));
       if (incoming.length === 0) return false;
-      saveOrders([...loadOrders(), ...incoming]);
+      ordersCache = [...ordersCache, ...incoming];
+      notifyOrderListeners();
       return true;
     } catch {
       return false;
@@ -265,24 +225,8 @@ export function syncOrdersFromBackend(force = false): Promise<boolean> {
   return ordersSyncInflight;
 }
 
-type Listener = () => void;
-
-/**
- * Cross-tab live sync: fires in every OTHER open tab when this tab saves,
- * so the other portal updates instantly without refresh.
- * (Same-tab updates already happen via setState on save.)
- */
+/** Same-tab live sync: fires every time the shared store is written. */
 export function subscribeOrders(listener: Listener): () => void {
-  if (typeof window === "undefined") return () => {};
-  const handler = (e: StorageEvent) => {
-    if (
-      e.key === null ||
-      e.key === SHARED_KEY ||
-      (LEGACY_KEYS as readonly string[]).includes(e.key)
-    ) {
-      listener();
-    }
-  };
-  window.addEventListener("storage", handler);
-  return () => window.removeEventListener("storage", handler);
+  orderListeners.add(listener);
+  return () => orderListeners.delete(listener);
 }

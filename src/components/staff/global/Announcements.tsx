@@ -2,27 +2,18 @@
 
 import React, { useEffect, useState } from "react";
 import {
-  loadAnnouncements as loadSharedAnnouncements,
-  saveAnnouncements as persistSharedAnnouncements,
-  subscribeAnnouncements,
+  fetchAnnouncements,
+  postAnnouncement,
+  removeAnnouncement,
   type Announcement,
 } from "@/lib/announcementsStore";
-import { apiDelete, apiGet, apiPost } from "@/lib/api";
 
 // Kept for compatibility (same shape as the shared store type).
 export type AnnouncementItem = Announcement;
 
-interface AnnouncementPayload {
-  id: string;
-  title: string;
-  message: string;
-  createdAt: string;
-  active: boolean;
-}
-
 export function Announcements() {
-  // Server first (works across devices), local store as offline fallback.
-  const [announcements, setAnnouncements] = useState<Announcement[]>(loadSharedAnnouncements);
+  // Server is the only source of truth (Supabase).
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -30,29 +21,20 @@ export function Announcements() {
 
   useEffect(() => {
     let cancelled = false;
-    apiGet<AnnouncementPayload[]>("/api/announcements?active=all")
-      .then(({ ok, body }) => {
-        if (cancelled || !ok || !body?.data) return;
-        setAnnouncements(body.data);
-        persistSharedAnnouncements(body.data);
+    fetchAnnouncements(false)
+      .then((rows) => {
+        if (!cancelled) setAnnouncements(rows);
       })
       .catch(() => {
-        // Offline / server asleep: keep local data.
+        if (!cancelled) setAnnouncements([]);
       });
     return () => {
       cancelled = true;
     };
   }, []);
 
-  // Shared store: staff + portal stay in sync live, no refresh needed.
-  useEffect(
-    () => subscribeAnnouncements(() => setAnnouncements(loadSharedAnnouncements())),
-    []
-  );
-
-  const saveAnnouncements = (updated: Announcement[]) => {
+  const setAnnouncementsList = (updated: Announcement[]) => {
     setAnnouncements(updated);
-    persistSharedAnnouncements(updated);
   };
 
   const handlePost = async (e: React.FormEvent) => {
@@ -62,41 +44,14 @@ export function Announcements() {
     setIsSubmitting(true);
     setSyncError(null);
     try {
-      const { ok, body } = await apiPost<AnnouncementPayload>("/api/announcements", {
-        title: title.trim(),
-        message: message.trim(),
-      });
-      if (ok && body?.data) {
-        const updated = [body.data, ...announcements];
-        saveAnnouncements(updated);
+      const created = await postAnnouncement(title.trim(), message.trim());
+      if (created) {
+        setAnnouncementsList([created, ...announcements]);
       } else {
-        // Offline fallback: local-only post (visible in this browser).
-        const updated = [
-          {
-            id: `ANN-${Date.now()}`,
-            title: title.trim(),
-            message: message.trim(),
-            createdAt: new Date().toISOString(),
-            active: true,
-          },
-          ...announcements,
-        ];
-        saveAnnouncements(updated);
-        setSyncError("Saved on this device only — server unreachable, customers on other devices won't see it yet.");
+        setSyncError("Could not post to the server. Please try again.");
       }
     } catch {
-      const updated = [
-        {
-          id: `ANN-${Date.now()}`,
-          title: title.trim(),
-          message: message.trim(),
-          createdAt: new Date().toISOString(),
-          active: true,
-        },
-        ...announcements,
-      ];
-      saveAnnouncements(updated);
-      setSyncError("Saved on this device only — server unreachable, customers on other devices won't see it yet.");
+      setSyncError("Could not reach the server. Please try again.");
     } finally {
       setTitle("");
       setMessage("");
@@ -105,12 +60,11 @@ export function Announcements() {
   };
 
   const handleDelete = async (id: string) => {
-    const updated = announcements.filter((a) => a.id !== id);
-    saveAnnouncements(updated);
-    try {
-      await apiDelete(`/api/announcements/${encodeURIComponent(id)}`);
-    } catch {
-      // Local delete already applied; server sync best-effort.
+    const ok = await removeAnnouncement(id);
+    if (ok) {
+      setAnnouncementsList(announcements.filter((a) => a.id !== id));
+    } else {
+      setSyncError("Could not delete on the server. Please try again.");
     }
   };
 
