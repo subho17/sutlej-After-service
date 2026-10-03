@@ -2,7 +2,8 @@
 
 import React from "react";
 import { usePathname } from "next/navigation";
-import { StaffNavbar } from "@/components/staff";
+import { StaffShell } from "@/components/staff";
+import { AuthGuard } from "@/components/AuthGuard";
 
 const HIDE_NAVBAR_ROUTES = ["/staff", "/staff/login", "/staff/forgot-password"];
 
@@ -14,15 +15,17 @@ export default function StaffLayout({
   const pathname = usePathname();
   const hideNavbar = HIDE_NAVBAR_ROUTES.includes(pathname);
 
-  if (hideNavbar) {
-    // Login pages render full-screen without staff navbar
-    return <div className="min-h-screen flex flex-col">{children}</div>;
-  }
-
+  // AuthGuard bounces a tab without a sutlej_token cookie to /staff/login —
+  // every API route is behind requireAuth, so that tab would otherwise render
+  // empty lists forever and poll a 401 every 20s.
   return (
-    <div className="min-h-screen flex flex-col bg-[#0B0F17] text-white">
-      <StaffNavbar />
-      <div className="flex-1">{children}</div>
-    </div>
+    <AuthGuard>
+      {hideNavbar ? (
+        // Login & Forgot Password pages render full-screen
+        <div className="min-h-screen flex flex-col">{children}</div>
+      ) : (
+        <StaffShell>{children}</StaffShell>
+      )}
+    </AuthGuard>
   );
 }

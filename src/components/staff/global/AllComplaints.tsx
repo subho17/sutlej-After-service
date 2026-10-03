@@ -9,11 +9,14 @@ import {
   loadComplaints as loadSharedComplaints,
   pushComplaintStatusToBackend,
   saveComplaints as persistSharedComplaints,
+  startComplaintsPolling,
   subscribeComplaints,
   syncComplaintsFromBackend,
   type ComplaintStatus,
   type SharedComplaint,
 } from "@/lib/complaintsStore";
+
+import { useStaffAlert } from "../alerts";
 
 // Kept for compatibility (same shape as the shared store type).
 export type ComplaintItem = SharedComplaint;
@@ -64,11 +67,13 @@ function mailtoDraft(item: SharedComplaint): string {
  * e.g. when the API is unreachable or no address is on file).
  */
 function EmailComplaintButton({ item }: { item: SharedComplaint }) {
+  const { showSuccess, showInfo } = useStaffAlert();
   const [state, setState] = useState<"idle" | "sending" | "sent" | "draft">("idle");
 
   const openDraft = () => {
     window.location.href = mailtoDraft(item);
     setState("draft");
+    showInfo("Email Draft Opened", `Mail application opened with formal draft for ${item.id}.`);
   };
 
   const handleClick = async () => {
@@ -86,6 +91,7 @@ function EmailComplaintButton({ item }: { item: SharedComplaint }) {
       });
       if (!ok) throw new Error("send failed");
       setState("sent");
+      showSuccess("Email Notification Sent", `Status update sent to ${item.email} for ticket ${item.id}.`);
     } catch {
       // Backend unreachable or mail service down: staff can still send manually.
       openDraft();
@@ -126,6 +132,7 @@ function EmailComplaintButton({ item }: { item: SharedComplaint }) {
 }
 
 export function AllComplaints() {
+  const { showSuccess, showConfirm } = useStaffAlert();
   // Shared store: status edits here appear in the customer portal too,
   // and new complaints arrive live without refresh.
   const [complaints, setComplaints] = useState<SharedComplaint[]>(loadSharedComplaints);
@@ -136,7 +143,14 @@ export function AllComplaints() {
     syncComplaintsFromBackend().then((changed) => {
       if (changed) rebuild();
     });
-    return subscribeComplaints(rebuild);
+    // Keep polling while the list is open — a complaint raised on another
+    // device used to need a manual reload to show up here.
+    const stopPolling = startComplaintsPolling();
+    const off = subscribeComplaints(rebuild);
+    return () => {
+      off();
+      stopPolling();
+    };
   }, []);
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -144,11 +158,31 @@ export function AllComplaints() {
   const [categoryFilter, setCategoryFilter] = useState("all");
 
   const handleStatusChange = (id: string, status: ComplaintStatus) => {
-    const updated = complaints.map((c) => (c.id === id ? { ...c, status } : c));
-    setComplaints(updated);
-    persistSharedComplaints(updated);
-    // Cross-device: sync the status move to the backend (fire-and-forget).
-    pushComplaintStatusToBackend(id, status);
+    const applyStatus = () => {
+      const stamp = new Date().toISOString();
+      const current = loadSharedComplaints();
+      persistSharedComplaints(
+        current.map((c) =>
+          c.id === id ? { ...c, status, updatedAt: stamp } : c
+        )
+      );
+      // Cross-device: sync the status move to the backend (fire-and-forget).
+      pushComplaintStatusToBackend(id, status);
+      showSuccess("Status Updated", `Complaint ${id} updated to ${status.toUpperCase()}.`);
+    };
+
+    if (status === "closed") {
+      showConfirm({
+        title: "Close Complaint Ticket?",
+        message: `Are you sure you want to mark ticket ${id} as Closed? Work should be completely verified.`,
+        confirmText: "Close Ticket",
+        cancelText: "Keep Active",
+        type: "primary",
+        onConfirm: applyStatus,
+      });
+    } else {
+      applyStatus();
+    }
   };
 
   // Filter complaints
@@ -170,7 +204,7 @@ export function AllComplaints() {
   });
 
   return (
-    <div className="w-full min-h-[calc(100vh-4rem)] bg-[#F3EEF5] text-slate-800 p-4 sm:p-6 lg:p-8">
+    <div className="w-full min-h-[calc(100vh-4rem)] bg-[#F4F6FB] text-slate-800 p-4 sm:p-6 lg:p-8">
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Page Title */}
         <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">

@@ -8,10 +8,13 @@ import {
   type Announcement,
 } from "@/lib/announcementsStore";
 
+import { useStaffAlert } from "../alerts";
+
 // Kept for compatibility (same shape as the shared store type).
 export type AnnouncementItem = Announcement;
 
 export function Announcements() {
+  const { showSuccess, showError, showConfirm } = useStaffAlert();
   // Server is the only source of truth (Supabase).
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [title, setTitle] = useState("");
@@ -47,11 +50,16 @@ export function Announcements() {
       const created = await postAnnouncement(title.trim(), message.trim());
       if (created) {
         setAnnouncementsList([created, ...announcements]);
+        showSuccess("Announcement Published", `"${created.title}" is now broadcasting to all customers.`);
       } else {
-        setSyncError("Could not post to the server. Please try again.");
+        const err = "Could not post to the server. Please try again.";
+        setSyncError(err);
+        showError("Publish Failed", err);
       }
     } catch {
-      setSyncError("Could not reach the server. Please try again.");
+      const err = "Could not reach the server. Please try again.";
+      setSyncError(err);
+      showError("Publish Failed", err);
     } finally {
       setTitle("");
       setMessage("");
@@ -59,17 +67,28 @@ export function Announcements() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    const ok = await removeAnnouncement(id);
-    if (ok) {
-      setAnnouncementsList(announcements.filter((a) => a.id !== id));
-    } else {
-      setSyncError("Could not delete on the server. Please try again.");
-    }
+  const handleDelete = (id: string) => {
+    const item = announcements.find((a) => a.id === id);
+    showConfirm({
+      title: "Delete Announcement?",
+      message: `Are you sure you want to remove "${item?.title || "this announcement"}"? Customers will no longer see it.`,
+      confirmText: "Delete",
+      cancelText: "Keep",
+      type: "danger",
+      onConfirm: async () => {
+        const ok = await removeAnnouncement(id);
+        if (ok) {
+          setAnnouncementsList(announcements.filter((a) => a.id !== id));
+          showSuccess("Announcement Removed", "Announcement has been deleted.");
+        } else {
+          showError("Delete Failed", "Could not delete on the server. Please try again.");
+        }
+      },
+    });
   };
 
   return (
-    <div className="w-full min-h-[calc(100vh-4rem)] bg-[#F3EEF5] text-slate-800 p-4 sm:p-6 lg:p-8 flex flex-col">
+    <div className="w-full min-h-[calc(100vh-4rem)] bg-[#F4F6FB] text-slate-800 p-4 sm:p-6 lg:p-8 flex flex-col">
       <div className="max-w-6xl w-full mx-auto flex-1 flex flex-col">
         {/* Page Header */}
         <div className="mb-6">

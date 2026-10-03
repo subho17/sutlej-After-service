@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { SutlejLogo } from "@/components/global";
 import { apiPost } from "@/lib/api";
+import { reportAuthorized } from "@/lib/session";
 
 export interface CustomerSignupData {
   fullName: string;
@@ -104,7 +105,11 @@ export function CustomerSignup() {
     setLoading(true);
 
     try {
-      const { ok, body } = await apiPost<{ name: string; customerId?: string | null }>(
+      const { ok, body } = await apiPost<{
+        name: string;
+        customerId?: string | null;
+        phone?: string | null;
+      }>(
         "/api/auth/customer/signup",
         {
           name: formData.fullName.trim(),
@@ -124,6 +129,14 @@ export function CustomerSignup() {
       }
       if (body?.data?.name) sessionStorage.setItem("customerName", body.data.name);
       if (body?.data?.customerId) sessionStorage.setItem("customerId", body.data.customerId);
+      // This customer's own number — used when they raise a complaint.
+      sessionStorage.setItem(
+        "customerPhone",
+        String(body?.data?.phone ?? formData.phone.trim())
+      );
+      // The cookie is set: tell the AuthGuard before the home page mounts so
+      // its first sync is not blocked by a stale "signed-out".
+      reportAuthorized();
       router.push("/customer");
     } catch (err) {
       setError(err instanceof Error && err.message ? err.message : "Unable to reach server. Please try again.");

@@ -72,6 +72,9 @@ export async function customerLogin(req: Request, res: Response) {
     data: {
       name: customer.name,
       customerId: customer.customer_id,
+      // Each customer has their own number — the portal stores this on login
+      // so complaints/orders are filed under the signed-in user's phone.
+      phone: customer.phone,
       email: customer.email,
       role: "customer",
     },

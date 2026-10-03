@@ -71,13 +71,13 @@ export function LandingLoadingScreen({
     >
       {/* Soft Ambient Radial Light in Sutlej Brand Blue */}
       <div
-        className="absolute w-[min(70vw,460px)] h-[min(70vw,460px)] rounded-full bg-[#008CEE]/8 blur-[110px] pointer-events-none transition-opacity duration-1000"
+        className="absolute w-[min(85vw,460px)] h-[min(85vw,460px)] rounded-full bg-[#008CEE]/8 blur-[90px] sm:blur-[110px] pointer-events-none transition-opacity duration-1000"
         aria-hidden="true"
       />
 
       {/* Centered Logo with Entrance and Glowing Pulse Animation */}
-      <div className="relative z-10 flex flex-col items-center justify-center animate-logo-entry px-4">
-        <div className="animate-logo-pulse flex flex-col items-center justify-center scale-75 sm:scale-90 md:scale-100 origin-center">
+      <div className="relative z-10 w-full max-w-lg mx-auto flex flex-col items-center justify-center animate-logo-entry px-4">
+        <div className="animate-logo-pulse w-full flex flex-col items-center justify-center origin-center">
           <SutlejLogo
             size={size}
             theme="light"
@@ -88,7 +88,7 @@ export function LandingLoadingScreen({
         </div>
 
         {/* Minimalist Sleek Loading Line in Logo Color */}
-        <div className="relative mt-8 w-28 sm:w-36 h-[3px] bg-slate-100 rounded-full overflow-hidden shadow-[inset_0_1px_2px_rgba(0,0,0,0.06)]">
+        <div className="relative mt-5 sm:mt-8 w-24 sm:w-36 h-[2.5px] sm:h-[3px] bg-slate-100 rounded-full overflow-hidden shadow-[inset_0_1px_2px_rgba(0,0,0,0.06)]">
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#008CEE] to-transparent w-full animate-logo-loading-bar" />
         </div>
       </div>

@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 import { CustomSelect } from "./CustomSelect";
 import {
   loadComplaints,
+  nextComplaintTicketNo,
   normalizeComplaint,
   pushComplaintToBackend,
   saveComplaints,
+  syncComplaintsFromBackend,
 } from "@/lib/complaintsStore";
 
 export interface RegisterComplaintFormData {
@@ -34,8 +36,11 @@ export const COMPLAINT_CATEGORIES = [
 
 export const PRIORITY_OPTIONS = ["Low", "Medium", "High", "Critical / Urgent"];
 
+import { useStaffAlert } from "../alerts";
+
 export function RegisterComplaint() {
   const router = useRouter();
+  const { showSuccess, showWarning, showError } = useStaffAlert();
 
   const [formData, setFormData] = useState<RegisterComplaintFormData>({
     registeredCustomer: "Walk-in / not registered",
@@ -67,28 +72,40 @@ export function RegisterComplaint() {
 
     // Validation
     if (!formData.customerName.trim()) {
-      setError("Customer name is required.");
+      const msg = "Customer name is required.";
+      setError(msg);
+      showWarning("Validation Required", msg);
       return;
     }
     if (!formData.phoneNumber.trim()) {
-      setError("Phone number is required.");
+      const msg = "Phone number is required.";
+      setError(msg);
+      showWarning("Validation Required", msg);
       return;
     }
     if (!formData.vehicleRegistrationNo.trim()) {
-      setError("Vehicle registration number is required.");
+      const msg = "Vehicle registration number is required.";
+      setError(msg);
+      showWarning("Validation Required", msg);
       return;
     }
     if (!formData.details.trim()) {
-      setError("Please describe the complaint details.");
+      const msg = "Please describe the complaint details.";
+      setError(msg);
+      showWarning("Validation Required", msg);
       return;
     }
 
     setLoading(true);
 
     try {
+      // Refresh first so the ticket number is minted against every complaint
+      // that already exists, not just this tab's cache.
+      await syncComplaintsFromBackend(true).catch(() => false);
+
       // Create new complaint record
       const newComplaint = {
-        id: `CMP-${Date.now().toString().slice(-4)}`,
+        id: nextComplaintTicketNo("CMP-"),
         title: `${formData.category} - ${formData.vehicleRegistrationNo.trim().toUpperCase()}`,
         description: formData.details.trim(),
         customerName: formData.customerName.trim(),
@@ -100,35 +117,53 @@ export function RegisterComplaint() {
         priority: formData.priority,
         status: "open" as const,
         createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       };
 
-      // Store in the shared complaints store (visible in customer portal too)
+      // Store in the shared complaints store (visible in customer portal too).
+      // Kept only once the backend accepts it: a local-only copy looks saved
+      // until the next reload and then disappears.
+      const before = loadComplaints();
       const record = normalizeComplaint({
         ...newComplaint,
-        createdAt: new Date().toISOString(),
         date: new Date().toISOString(),
       });
       saveComplaints([
         record,
-        ...loadComplaints().filter((c) => c.id !== newComplaint.id),
+        ...before.filter((c) => c.id !== newComplaint.id),
       ]);
-      // Cross-device: mirror to the backend shared copy (fire-and-forget).
-      pushComplaintToBackend(record);
+      // Cross-device: mirror to the backend shared copy. The backend re-keys
+      // if the number is already held, so adopt the ticket it settles on.
+      const pushed = await pushComplaintToBackend(record);
+      if (!pushed.ok) {
+        saveComplaints(before);
+        const msg =
+          "The complaint could not be saved on the server. Please check the backend is running, then try again.";
+        setError(msg);
+        showError("Submission Failed", msg);
+        return;
+      }
 
       setSuccess("Complaint registered successfully! Redirecting...");
+      showSuccess(
+        "Complaint Ticket Registered",
+        `Ticket ${pushed.ticket} created for ${formData.customerName}.`
+      );
 
       setTimeout(() => {
         router.push("/staff/dashboard");
       }, 1200);
     } catch {
-      setError("Failed to register complaint. Please try again.");
+      const msg = "Failed to register complaint. Please try again.";
+      setError(msg);
+      showError("Submission Failed", msg);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="w-full min-h-[calc(100vh-4rem)] bg-[#F3EEF5] text-slate-800 p-4 sm:p-6 lg:p-8">
+    <div className="w-full min-h-[calc(100vh-4rem)] bg-[#F4F6FB] text-slate-800 p-4 sm:p-6 lg:p-8">
       <div className="max-w-2xl mx-auto">
         {/* Title */}
         <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight mb-5">

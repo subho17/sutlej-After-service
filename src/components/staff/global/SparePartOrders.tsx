@@ -4,13 +4,16 @@ import React, { useEffect, useState } from "react";
 import { CustomSelect } from "./CustomSelect";
 import {
   loadOrders as loadSharedOrders,
+  nextOrderNo,
   pushOrderStatusToBackend,
   pushOrderToBackend,
   saveOrders as persistSharedOrders,
+  startOrdersPolling,
   subscribeOrders,
   syncOrdersFromBackend,
   type SharedOrder,
 } from "@/lib/ordersStore";
+import { useStaffAlert } from "../alerts";
 
 export interface OrderItem {
   partId: string;
@@ -36,6 +39,7 @@ export interface SparePartOrder {
 }
 
 export function SparePartOrders() {
+  const { showSuccess, showWarning, showConfirm } = useStaffAlert();
   // Shared store: status updates here are visible in the customer portal too.
   const [orders, setOrders] = useState<SharedOrder[]>(loadSharedOrders);
   // Shared store: customer orders arrive live, no refresh needed.
@@ -45,7 +49,15 @@ export function SparePartOrders() {
     syncOrdersFromBackend().then((changed) => {
       if (changed) rebuild();
     });
-    return subscribeOrders(rebuild);
+    // Orders raised on another device only arrive via a sync, and this page
+    // used to sync once on mount — a staff member watching the list never
+    // saw the next order until they reloaded.
+    const stopPolling = startOrdersPolling();
+    const unsubscribe = subscribeOrders(rebuild);
+    return () => {
+      unsubscribe();
+      stopPolling();
+    };
   }, []);
 
   const [statusFilter, setStatusFilter] = useState("all");
@@ -65,12 +77,14 @@ export function SparePartOrders() {
     persistSharedOrders(updated);
   };
 
-  const handleUpdateStatus = (
-    orderId: string,
-    newStatus: SharedOrder["status"]
-  ) => {
-    const updated = orders.map((o) =>
-      o.id === orderId ? { ...o, status: newStatus } : o
+  const applyStatusChange = (orderId: string, newStatus: SharedOrder["status"]) => {
+    // Read the shared store, not this component's render snapshot: a snapshot
+    // can be stale once polling is running, and writing it back would drop
+    // every order that arrived since the last render.
+    const updated = loadSharedOrders().map((o) =>
+      o.id === orderId
+        ? { ...o, status: newStatus, updatedAt: new Date().toISOString() }
+        : o
     );
     saveOrders(updated);
     if (selectedOrder && selectedOrder.id === orderId) {
@@ -78,16 +92,40 @@ export function SparePartOrders() {
     }
     // Cross-device: sync the status move to the backend (fire-and-forget).
     pushOrderStatusToBackend(orderId, newStatus);
+    showSuccess("Order Status Updated", `Order #${orderId} marked as ${newStatus.toUpperCase()}.`);
   };
 
-  const handleCreateOrder = (e: React.FormEvent) => {
+  const handleUpdateStatus = (
+    orderId: string,
+    newStatus: SharedOrder["status"]
+  ) => {
+    if (newStatus === "cancelled") {
+      showConfirm({
+        title: "Cancel Spare Part Order?",
+        message: `Are you sure you want to cancel order #${orderId}? The customer will see this order as cancelled.`,
+        confirmText: "Cancel Order",
+        cancelText: "Keep Active",
+        type: "danger",
+        onConfirm: () => applyStatusChange(orderId, newStatus),
+      });
+    } else {
+      applyStatusChange(orderId, newStatus);
+    }
+  };
+
+  const handleCreateOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCustomerName.trim() || !newPhone.trim() || !newPartName.trim()) {
+      showWarning("Incomplete Details", "Please fill in all required customer and part information.");
       return;
     }
 
+    const now = new Date().toISOString();
     const newOrder: SharedOrder = {
-      id: `ORD-${Date.now().toString().slice(-5)}`,
+      // Derived from the highest number already held, never from a count —
+      // a count-based id re-uses a number the backend already has, and the
+      // upsert then replaces that older order instead of adding to the list.
+      id: nextOrderNo(),
       customerName: newCustomerName.trim(),
       phoneNumber: newPhone.trim(),
       items: [
@@ -101,19 +139,29 @@ export function SparePartOrders() {
       ],
       totalAmount: (Number(newPartQty) || 1) * (Number(newPartPrice) || 0),
       status: "pending",
-      createdAt: new Date().toISOString(),
-      date: new Date().toISOString(),
+      createdAt: now,
+      date: now,
+      updatedAt: now,
     };
 
-    saveOrders([newOrder, ...orders]);
-    // Cross-device: mirror to the backend shared copy (fire-and-forget).
-    pushOrderToBackend(newOrder, "staff");
+    // Prepend to the live store (not this render's snapshot) so nothing that
+    // arrived in the meantime is written back out without the new order.
+    saveOrders([newOrder, ...loadSharedOrders()]);
     setShowCreateModal(false);
     setNewCustomerName("");
     setNewPhone("");
     setNewPartName("");
     setNewPartQty(1);
     setNewPartPrice(1500);
+
+    // Cross-device: mirror to the backend shared copy. The backend re-keys if
+    // the number is already held by an unrelated order, so announce the
+    // number the order actually ends up with.
+    const pushed = await pushOrderToBackend(newOrder, "staff");
+    showSuccess(
+      "Order Created",
+      `New order #${pushed.orderNo} registered for ${newOrder.customerName}.`
+    );
   };
 
   // Filtered orders based on selected dropdown status
@@ -160,7 +208,7 @@ export function SparePartOrders() {
   };
 
   return (
-    <div className="w-full min-h-[calc(100vh-4rem)] bg-[#F3EEF5] text-slate-800 p-4 sm:p-6 lg:p-8 flex flex-col">
+    <div className="w-full min-h-[calc(100vh-4rem)] bg-[#F4F6FB] text-slate-800 p-4 sm:p-6 lg:p-8 flex flex-col">
       <div className="max-w-6xl w-full mx-auto flex-1 flex flex-col">
         {/* Header Row */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
@@ -201,7 +249,19 @@ export function SparePartOrders() {
             </button>
             {orders.length > 0 && (
               <button
-                onClick={() => saveOrders([])}
+                onClick={() => {
+                  showConfirm({
+                    title: "Clear All Orders?",
+                    message: "Are you sure you want to clear all active and past orders from the staff list?",
+                    confirmText: "Clear All",
+                    cancelText: "Keep Orders",
+                    type: "danger",
+                    onConfirm: () => {
+                      saveOrders([]);
+                      showSuccess("Orders Cleared", "All orders have been removed.");
+                    },
+                  });
+                }}
                 className="text-xs font-medium text-slate-500 hover:text-rose-600 bg-white hover:bg-rose-50 border border-slate-200 rounded-md px-3 py-1.5 shadow-sm transition-colors cursor-pointer"
                 title="Reset to empty state"
               >

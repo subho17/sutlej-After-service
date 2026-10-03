@@ -110,8 +110,8 @@ export function SutlejLogo({
       <div
         className={`relative flex items-center justify-center transition-all duration-500 ${
           animated ? "animate-logo-pulse" : ""
-        }`}
-        style={{ width: currentSize.badgeSize, height: currentSize.badgeSize }}
+        } ${size === "hero" ? "w-20 h-20 xs:w-24 xs:h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 lg:w-36 lg:h-36" : ""}`}
+        style={size === "hero" ? undefined : { width: currentSize.badgeSize, height: currentSize.badgeSize }}
       >
         {/* Ambient Glow Aura */}
         <div
@@ -183,10 +183,16 @@ export function SutlejLogo({
 
       {/* Typography: SUTLEJ AUTOMOTIVES */}
       {showText && (
-        <div className="flex flex-col items-center tracking-widest text-center">
-          <div className="flex items-center gap-2.5 font-black uppercase tracking-[0.22em] select-none">
+        <div className="flex flex-col items-center tracking-widest text-center max-w-full px-2">
+          <div
+            className={`flex items-center gap-1.5 sm:gap-2.5 font-black uppercase select-none whitespace-nowrap ${
+              size === "hero"
+                ? "text-[clamp(14px,4vw,34px)] tracking-[0.10em] xs:tracking-[0.14em] sm:tracking-[0.20em] md:tracking-[0.22em]"
+                : `${currentSize.textSize} tracking-[0.22em]`
+            }`}
+          >
             <span
-              className={`${currentSize.textSize} text-[#008CEE] font-black drop-shadow-[0_0_12px_rgba(0,140,238,0.25)]`}
+              className="text-[#008CEE] font-black drop-shadow-[0_0_12px_rgba(0,140,238,0.25)]"
               style={{
                 fontFamily:
                   "'Orbitron', 'Rajdhani', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
@@ -195,7 +201,7 @@ export function SutlejLogo({
               SUTLEJ
             </span>
             <span
-              className={`${currentSize.textSize} ${
+              className={`${
                 isDark ? "text-slate-100 drop-shadow-[0_0_8px_rgba(255,255,255,0.2)]" : "text-[#1E232E]"
               } font-black`}
               style={{

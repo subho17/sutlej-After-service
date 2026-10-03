@@ -149,6 +149,10 @@ comment on table public.complaints is 'Service tickets. Lifecycle: open → in-p
 
 -- Lifecycle columns for DBs created by the older script (no-op if present).
 alter table public.complaints add column if not exists ticket_no text;
+-- The upgrade path adds a plain column; the portal upsert keys on ticket_no
+-- (ON CONFLICT), which needs a unique index. No-op when the CREATE TABLE
+-- above already declared it unique. Safe to re-run.
+create unique index if not exists complaints_ticket_no_key on public.complaints (ticket_no);
 alter table public.complaints add column if not exists customer_id uuid references public.customers(id) on delete set null;
 alter table public.complaints add column if not exists vehicle_id uuid references public.vehicles(id) on delete set null;
 alter table public.complaints add column if not exists assigned_staff_id uuid references public.staff(id) on delete set null;

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { SutlejLogo } from "@/components/global";
 import { apiPost } from "@/lib/api";
+import { reportAuthorized } from "@/lib/session";
 
 interface StaffLoginData {
   name: string;
@@ -37,6 +38,9 @@ export function StaffLogin() {
         return;
       }
       if (body?.data?.name) sessionStorage.setItem("staffName", body.data.name);
+      // The cookie is set: tell the AuthGuard before the dashboard mounts so
+      // its first sync is not blocked by a stale "signed-out".
+      reportAuthorized();
       router.push("/staff/dashboard");
     } catch (err) {
       setError(err instanceof Error && err.message ? err.message : "Unable to reach server. Please try again.");

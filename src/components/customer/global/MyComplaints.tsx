@@ -2,7 +2,12 @@
 
 import React, { useState, useEffect } from "react";
 import { EmptyStateCard } from "./EmptyStateCard";
-import { loadComplaints, subscribeComplaints, syncComplaintsFromBackend } from "@/lib/complaintsStore";
+import {
+  loadComplaints,
+  startComplaintsPolling,
+  subscribeComplaints,
+  syncComplaintsFromBackend,
+} from "@/lib/complaintsStore";
 import { visibleRecords } from "@/lib/ownership";
 
 export interface CustomerComplaint {
@@ -28,7 +33,9 @@ const DEFAULT_COMPLAINTS: CustomerComplaint[] = [
     vehicleRegistrationNo: "PB-10-GC-PT",
     category: "Engine / Motor issue",
     model: "club car tempo",
-    phone: "9163399882",
+    // Demo row only — no phone, so a placeholder number is never mistaken
+    // for this customer's actual one (the card hides the line when blank).
+    phone: "",
     status: "open",
     priority: "Medium",
     description: "Engine makes an unusual knocking noise on cold start.",
@@ -94,7 +101,14 @@ export function MyComplaints({
     syncComplaintsFromBackend().then((changed) => {
       if (changed) rebuild();
     });
-    return subscribeComplaints(rebuild);
+    // Status moves made by staff only reach this page through a sync; keep
+    // checking while the list is open instead of only on mount.
+    const stopPolling = startComplaintsPolling();
+    const off = subscribeComplaints(rebuild);
+    return () => {
+      off();
+      stopPolling();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

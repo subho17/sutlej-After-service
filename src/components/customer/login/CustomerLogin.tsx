@@ -5,10 +5,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { SutlejLogo } from "@/components/global";
 import { apiPost } from "@/lib/api";
+import { reportAuthorized } from "@/lib/session";
 
 interface CustomerLoginData {
   name: string;
   customerId?: string | null;
+  phone?: string | null;
 }
 
 export function CustomerLogin() {
@@ -39,6 +41,12 @@ export function CustomerLogin() {
       }
       if (body?.data?.name) sessionStorage.setItem("customerName", body.data.name);
       if (body?.data?.customerId) sessionStorage.setItem("customerId", body.data.customerId);
+      // This customer's own number — used when they raise a complaint.
+      if (body?.data?.phone) sessionStorage.setItem("customerPhone", body.data.phone);
+      else sessionStorage.removeItem("customerPhone");
+      // The cookie is set: tell the AuthGuard before the home page mounts so
+      // its first sync is not blocked by a stale "signed-out".
+      reportAuthorized();
       router.push("/customer");
     } catch (err) {
       setError(err instanceof Error && err.message ? err.message : "Unable to reach server. Please try again.");

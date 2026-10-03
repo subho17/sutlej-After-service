@@ -99,6 +99,11 @@ export async function signup(req: Request, res: Response) {
 
   res.status(201).json({
     message: "Account created.",
-    data: { name: customer.name, customerId: customer.customer_id, email: customer.email },
+    data: {
+      name: customer.name,
+      customerId: customer.customer_id,
+      phone: customer.phone,
+      email: customer.email,
+    },
   });
 }

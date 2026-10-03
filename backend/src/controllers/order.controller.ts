@@ -15,7 +15,10 @@ export async function listOrdersHandler(_req: Request, res: Response) {
 // POST /api/orders — portal write-through (staff + customer).
 // Body: { orderNo, customerName?, phone?, email?, vehicleRegNo?,
 //   vehicleModel?, deliveryAddress?, items?, total?, status?, notes?,
-//   ownerId?, createdBy?, createdAt? }. Idempotent: retries upsert by order_no.
+//   ownerId?, createdBy?, createdAt? }.
+// Idempotent: retries upsert by order_no. If the requested number is already
+// held by a *different* order the row is NOT overwritten — a fresh number is
+// allocated and returned, and the caller adopts it as its order number.
 export async function createOrderHandler(req: Request, res: Response) {
   const b = req.body ?? {};
   const orderNo = String(b.orderNo ?? b.order_no ?? b.id ?? "").trim();

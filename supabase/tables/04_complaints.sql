@@ -38,6 +38,12 @@ comment on table public.complaints is 'Service tickets. Lifecycle: open → in-p
 
 -- Upgrade path for DBs created by the older, smaller script (no-op otherwise).
 alter table public.complaints add column if not exists ticket_no text;
+-- The upgrade path above adds a plain column with no uniqueness. The portal
+-- upsert keys on ticket_no (ON CONFLICT), which Postgres only accepts when a
+-- unique index backs that column — without it every portal write fails. When
+-- the CREATE TABLE above declared it `unique`, its index already carries this
+-- name and the statement is a no-op. Safe to re-run.
+create unique index if not exists complaints_ticket_no_key on public.complaints (ticket_no);
 alter table public.complaints add column if not exists customer_id uuid references public.customers(id) on delete set null;
 alter table public.complaints add column if not exists vehicle_id uuid references public.vehicles(id) on delete set null;
 alter table public.complaints add column if not exists assigned_staff_id uuid references public.staff(id) on delete set null;

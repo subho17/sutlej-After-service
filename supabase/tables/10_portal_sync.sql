@@ -21,6 +21,15 @@ alter table public.complaints drop constraint if exists complaints_priority_chec
 alter table public.complaints add constraint complaints_priority_check
   check (priority in ('Low', 'Medium', 'High', 'Critical'));
 
+-- ticket_no / order_no are the upsert keys for portal writes
+-- (ON CONFLICT ticket_no / order_no). Postgres rejects that clause unless the
+-- column is backed by a unique index, and the `add column` upgrade path in
+-- 04_complaints.sql adds ticket_no as plain text. When the CREATE TABLE
+-- already declared it `unique`, its backing index has this exact name and
+-- these statements are no-ops. Safe to re-run.
+create unique index if not exists complaints_ticket_no_key on public.complaints (ticket_no);
+create unique index if not exists spare_orders_order_no_key on public.spare_orders (order_no);
+
 create index if not exists idx_complaints_ticket_no on public.complaints (ticket_no);
 create index if not exists idx_complaints_owner on public.complaints (owner_id);
 

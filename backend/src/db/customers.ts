@@ -14,6 +14,18 @@ export async function findCustomerByIdentifier(identifier: string): Promise<Cust
   return (data as CustomerRow | null) ?? null;
 }
 
+/** Look up a customer by primary key (the JWT `sub`). Used by /api/customers/me. */
+export async function findCustomerById(id: string): Promise<CustomerRow | null> {
+  const { data, error } = await supabaseAdmin()
+    .from("customers")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) throw error;
+  return (data as CustomerRow | null) ?? null;
+}
+
 export async function listCustomers(): Promise<CustomerRow[]> {
   const { data, error } = await supabaseAdmin()
     .from("customers")

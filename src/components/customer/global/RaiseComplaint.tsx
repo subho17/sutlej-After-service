@@ -5,10 +5,13 @@ import { useRouter } from "next/navigation";
 import { apiGet } from "@/lib/api";
 import {
   loadComplaints,
+  nextComplaintTicketNo,
   normalizeComplaint,
   pushComplaintToBackend,
   saveComplaints,
+  syncComplaintsFromBackend,
 } from "@/lib/complaintsStore";
+import { verifyCustomerSession } from "@/lib/ownership";
 
 export interface VehicleOption {
   registrationNo: string;
@@ -68,6 +71,9 @@ export function RaiseComplaint({
         );
       })
       .catch(() => {});
+    // Warm the complaints cache: the ticket number we are about to mint
+    // depends on which complaints already exist across all devices.
+    syncComplaintsFromBackend().catch(() => {});
     return () => {
       cancelled = true;
     };
@@ -106,13 +112,37 @@ export function RaiseComplaint({
     setLoading(true);
 
     try {
+      // A complaint must belong to an account. The backend only persists
+      // authenticated submissions, so a signed-out visitor used to get a
+      // "success" message for a complaint nobody ever received — and it was
+      // filed under a shared placeholder number instead of their own.
+      const session = await verifyCustomerSession();
+      if (session.state === "signed-out") {
+        setError(
+          "Please sign in to raise a complaint — it is filed against your account so our team can see it and call you back."
+        );
+        return;
+      }
+
       const customerName =
         (typeof window !== "undefined" &&
           sessionStorage.getItem("customerName")) ||
-        "Aditi";
+        "";
+      if (!customerName) {
+        setError(
+          "We couldn't identify your account for this complaint. Please sign in and try again."
+        );
+        return;
+      }
 
-      const count = loadComplaints().length + 1;
-      const complaintId = `SA-2026-${String(count).padStart(4, "0")}`;
+      // This customer's own phone number (never a shared placeholder).
+      const phone = session.phone;
+
+      // Refresh before minting a ticket: a cache that had not synced yet
+      // reused SA-2026-0001, and the backend upsert then replaced the
+      // complaint already holding that number.
+      await syncComplaintsFromBackend(true).catch(() => false);
+      const complaintId = nextComplaintTicketNo();
 
       const now = new Date();
       const months = [
@@ -136,36 +166,65 @@ export function RaiseComplaint({
         priority,
         // New customer complaints await staff acceptance.
         status: "pending" as const,
-        phone: "9163399882",
+        phone,
         description: description.trim(),
         createdAt: new Date().toISOString(),
       };
 
-      // Save to the shared complaints store (visible to staff immediately)
+      // Save to the shared complaints store (visible to staff immediately).
+      // Nothing is kept locally unless the backend accepted it: a local-only
+      // copy looks saved until the next reload, then disappears — which is
+      // exactly the "complaint vanished" report.
+      const before = loadComplaints();
+      let resolvedTicket = complaintId;
+      let persisted = false;
+
       if (typeof window !== "undefined") {
         try {
           const record = normalizeComplaint({
             ...newComplaint,
             phoneNumber: newComplaint.phone,
+            updatedAt: newComplaint.createdAt,
           });
           saveComplaints([
             record,
-            ...loadComplaints().filter((c) => c.id !== complaintId),
+            ...before.filter((c) => c.id !== complaintId),
           ]);
-          // Cross-device: mirror to the backend shared copy (fire-and-forget).
-          pushComplaintToBackend(record);
-
-          sessionStorage.setItem("lastSubmittedComplaint", complaintId);
+          // Cross-device: mirror to the backend shared copy. The backend
+          // re-keys if our ticket number turns out to be already held, so
+          // adopt whatever ticket the complaint actually ends up with.
+          const pushed = await pushComplaintToBackend(record);
+          persisted = pushed.ok;
+          resolvedTicket = pushed.ticket;
         } catch {
-          // Ignore storage errors
+          persisted = false;
         }
+
+        if (persisted) {
+          try {
+            sessionStorage.setItem("lastSubmittedComplaint", resolvedTicket);
+          } catch {
+            // Storage unavailable — the confirmation just skips the toast.
+          }
+        } else {
+          // Nothing reached staff: roll the local copy back so a retry
+          // re-uses this ticket instead of leaving two copies behind.
+          saveComplaints(before);
+        }
+      }
+
+      if (!persisted) {
+        setError(
+          "We couldn't send your complaint to our team. Please check your internet connection and that you're signed in, then try again."
+        );
+        return;
       }
 
       setSuccess("Complaint registered successfully! Our team will review it.");
       setDescription("");
 
       if (onSuccess) {
-        onSuccess(complaintId);
+        onSuccess(resolvedTicket);
       } else {
         setTimeout(() => {
           router.push("/customer/complaints");

@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   loadOrders,
+  nextOrderNo,
   normalizeOrder,
   pushOrderToBackend,
   saveOrders,
@@ -105,8 +106,10 @@ export function ShopSpares({ className = "" }: ShopSparesProps) {
     if (totalItemsCount === 0) return;
 
     setOrderSubmitting(true);
-    const count = loadOrders().length + 1;
-    const orderId = `ORD-2026-${String(count).padStart(4, "0")}`;
+    // Derived from the highest number already held, never from a count: a
+    // count-based id re-uses a number the backend already stores, and the
+    // upsert then replaces that older order instead of adding a new one.
+    const orderId = nextOrderNo();
 
     const items = Object.entries(quantities).map(([id, qty]) => {
       const part = INITIAL_SPARES.find((p) => p.id === id);
@@ -145,15 +148,18 @@ export function ShopSpares({ className = "" }: ShopSparesProps) {
     if (typeof window !== "undefined") {
       try {
         // Shared store: the order is visible to staff immediately.
+        const placedAt = new Date().toISOString();
         const record = normalizeOrder({
           ...newOrder,
-          createdAt: new Date().toISOString(),
+          createdAt: placedAt,
+          updatedAt: placedAt,
         });
-        saveOrders([
-          record,
-          ...loadOrders().filter((o) => o.id !== newOrder.id),
-        ]);
-        // Cross-device: mirror to the backend shared copy (fire-and-forget).
+        // Prepend to the live store. Nothing is filtered out by id — the
+        // order number is unique, so there is never an older order to drop.
+        saveOrders([record, ...loadOrders()]);
+        // Cross-device: mirror to the backend shared copy. The backend
+        // re-keys if the number is already held, and renameOrderId keeps
+        // lastSubmittedOrder pointing at whatever it settles on.
         pushOrderToBackend(record, "customer");
 
         sessionStorage.setItem("lastSubmittedOrder", orderId);

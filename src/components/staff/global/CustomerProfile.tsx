@@ -81,7 +81,7 @@ export function CustomerProfile({ customerKey }: { customerKey: string }) {
   }
 
   return (
-    <div className="w-full min-h-[calc(100vh-4rem)] bg-[#F3EEF5] text-slate-800 p-4 sm:p-6 lg:p-8">
+    <div className="w-full min-h-[calc(100vh-4rem)] bg-[#F4F6FB] text-slate-800 p-4 sm:p-6 lg:p-8">
       <div className="max-w-6xl mx-auto space-y-6 sm:space-y-8">
         <Link
           href="/staff/customers"

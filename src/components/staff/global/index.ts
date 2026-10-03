@@ -1,4 +1,5 @@
 export * from "./StaffDashboard";
+export * from "./StaffAnalyticsGraphs";
 export * from "./StatCard";
 export * from "./EmptyStateCard";
 export * from "./RegisterComplaint";
@@ -10,6 +11,7 @@ export * from "./CustomSelect";
 export * from "./CustomersDirectory";
 export * from "./CustomerProfile";
 export { default as StaffDashboard } from "./StaffDashboard";
+export { default as StaffAnalyticsGraphs } from "./StaffAnalyticsGraphs";
 export { default as RegisterComplaint } from "./RegisterComplaint";
 export { default as AllComplaints } from "./AllComplaints";
 export { default as SparesInventory } from "./SparesInventory";

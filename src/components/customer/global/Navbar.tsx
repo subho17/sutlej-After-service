@@ -3,6 +3,8 @@
 import React, { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { apiPost } from "@/lib/api";
+import { reportUnauthorized } from "@/lib/session";
 
 function subscribe(callback: () => void) {
   if (typeof window === "undefined") return () => {};
@@ -75,7 +77,13 @@ export function CustomerNavbar({
       sessionStorage.removeItem("customerName");
       sessionStorage.removeItem("customerId");
       sessionStorage.removeItem("customerToken");
+      // Never leave the previous account's number for the next sign-in.
+      sessionStorage.removeItem("customerPhone");
     }
+    // Clear the httpOnly cookie — otherwise "Log out" only hid the badge and
+    // the next page still came back authenticated.
+    apiPost("/api/auth/logout", {}).catch(() => {});
+    reportUnauthorized();
     if (onLogout) {
       onLogout();
     } else {

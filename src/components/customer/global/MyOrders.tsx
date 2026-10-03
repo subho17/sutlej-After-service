@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { EmptyStateCard } from "./EmptyStateCard";
-import { loadOrders, subscribeOrders, syncOrdersFromBackend } from "@/lib/ordersStore";
+import { loadOrders, startOrdersPolling, subscribeOrders, syncOrdersFromBackend } from "@/lib/ordersStore";
 import { visibleRecords } from "@/lib/ownership";
 
 export interface OrderItem {
@@ -56,7 +56,13 @@ export function MyOrders({ initialOrders, className = "" }: MyOrdersProps) {
     syncOrdersFromBackend().then((changed) => {
       if (changed) rebuild();
     });
-    return subscribeOrders(rebuild);
+    // Staff status moves only reach this page through a sync — keep it fresh.
+    const stopPolling = startOrdersPolling();
+    const unsubscribe = subscribeOrders(rebuild);
+    return () => {
+      unsubscribe();
+      stopPolling();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

@@ -1,6 +1,8 @@
 // Backend API base + helper. Auth uses an httpOnly cookie, so every
 // request must go out with credentials: "include".
 
+import { reportUnauthorized } from "./session";
+
 export const API_BASE =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
 
@@ -44,6 +46,11 @@ async function request<T>(
   }
 
   const parsed = (await res.json().catch(() => null)) as ApiBody<T> | null;
+  // 401 means this tab has no (or an unusable) sutlej_token: <AuthGuard/>
+  // sends it to the login page and the sync helpers stop asking until that
+  // is resolved. Successes are not reported here — POST /api/auth/logout
+  // answers 200 precisely when the session stops existing.
+  if (res.status === 401) reportUnauthorized();
   return { ok: res.ok, status: res.status, body: parsed };
 }
 

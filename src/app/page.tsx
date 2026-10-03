@@ -7,7 +7,7 @@ export default function Home() {
   const [loadingDone, setLoadingDone] = useState(false);
 
   return (
-    <main className="min-h-screen flex flex-col">
+    <main className="min-h-screen w-full flex flex-col overflow-x-hidden bg-[#F8F9FA]">
       {/* Loading animation on first open */}
       {!loadingDone && (
         <LandingLoadingScreen
@@ -18,7 +18,7 @@ export default function Home() {
 
       {/* Role selection opens after loading completes */}
       <section
-        className={`flex-1 flex items-center justify-center bg-[#0B0F17] transition-opacity duration-700 ${
+        className={`flex-1 w-full flex items-center justify-center bg-[#F8F9FA] transition-opacity duration-700 ${
           loadingDone ? "opacity-100" : "opacity-0"
         }`}
       >

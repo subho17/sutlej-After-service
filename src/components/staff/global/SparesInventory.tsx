@@ -23,7 +23,10 @@ function fromRow(row: SparePartRow): SparePart {
   return { id: row.sku, name: row.name, category: row.category, price: Number(row.price), stock: Number(row.stock) };
 }
 
+import { useStaffAlert } from "../alerts";
+
 export function SparesInventory() {
+  const { showSuccess, showError, showWarning, showConfirm } = useStaffAlert();
   const [parts, setParts] = useState<SparePart[]>([]);
   const [loading, setLoading] = useState(true);
   const [savedId, setSavedId] = useState<string | null>(null);
@@ -57,21 +60,29 @@ export function SparesInventory() {
     setAddError(null);
 
     if (!newName.trim()) {
-      setAddError("Please enter a part name.");
+      const err = "Please enter a part name.";
+      setAddError(err);
+      showWarning("Validation Required", err);
       return;
     }
     if (!newCategory.trim()) {
-      setAddError("Please enter a category.");
+      const err = "Please enter a category.";
+      setAddError(err);
+      showWarning("Validation Required", err);
       return;
     }
     const priceNum = parseFloat(newPrice);
     if (isNaN(priceNum) || priceNum < 0) {
-      setAddError("Please enter a valid price.");
+      const err = "Please enter a valid price.";
+      setAddError(err);
+      showWarning("Validation Required", err);
       return;
     }
     const stockNum = parseInt(newStock, 10);
     if (isNaN(stockNum) || stockNum < 0) {
-      setAddError("Please enter a valid stock quantity.");
+      const err = "Please enter a valid stock quantity.";
+      setAddError(err);
+      showWarning("Validation Required", err);
       return;
     }
 
@@ -87,8 +98,11 @@ export function SparesInventory() {
     });
     if (ok && body?.data) {
       setParts((prev) => [fromRow(body.data as SparePartRow), ...prev]);
+      showSuccess("Spare Part Added", `SKU ${nextId} (${newName.trim()}) registered with ${stockNum} units.`);
     } else {
-      setAddError("Could not save to the server. Please try again.");
+      const err = "Could not save to the server. Please try again.";
+      setAddError(err);
+      showError("Registration Failed", err);
       return;
     }
 
@@ -128,20 +142,32 @@ export function SparesInventory() {
     if (ok && body?.data) {
       setParts((prev) => prev.map((p) => (p.id === id ? fromRow(body.data as SparePartRow) : p)));
       setSavedId(id);
+      showSuccess("Inventory Updated", `Saved changes to ${row.name}.`);
       setTimeout(() => setSavedId(null), 1500);
+    } else {
+      showError("Update Failed", `Could not update ${row.name}.`);
     }
   };
 
   // Delete Row
-  const handleDeleteRow = async (id: string) => {
-    if (confirm("Are you sure you want to delete this part from the inventory?")) {
-      setParts((prev) => prev.filter((item) => item.id !== id));
-      await apiDelete(`/api/spare-parts/${encodeURIComponent(id)}`).catch(() => {});
-    }
+  const handleDeleteRow = (id: string) => {
+    const part = parts.find((p) => p.id === id);
+    showConfirm({
+      title: "Delete Spare Part?",
+      message: `Are you sure you want to remove "${part?.name || id}" from the inventory? This action cannot be undone.`,
+      confirmText: "Delete Part",
+      cancelText: "Keep Part",
+      type: "danger",
+      onConfirm: async () => {
+        setParts((prev) => prev.filter((item) => item.id !== id));
+        await apiDelete(`/api/spare-parts/${encodeURIComponent(id)}`).catch(() => {});
+        showSuccess("Part Deleted", `Removed "${part?.name || id}" from inventory.`);
+      },
+    });
   };
 
   return (
-    <div className="w-full min-h-[calc(100vh-4rem)] bg-[#F3EEF5] text-slate-800 p-4 sm:p-6 lg:p-8">
+    <div className="w-full min-h-[calc(100vh-4rem)] bg-[#F4F6FB] text-slate-800 p-4 sm:p-6 lg:p-8">
       <div className="max-w-5xl mx-auto space-y-6">
         {/* Header Title & Subtitle */}
         <div>

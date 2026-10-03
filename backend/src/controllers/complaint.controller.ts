@@ -29,7 +29,10 @@ export async function createComplaintHandler(req: Request, res: Response) {
 // POST /api/complaints/portal — portal write-through (staff + customer).
 // Body: { ticketNo, title?, description, customerName?, phone?, email?,
 //   vehicleRegNo?, vehicleModel?, category?, priority?, status?, source?,
-//   ownerId?, createdAt? }. Idempotent: retries upsert by ticket_no.
+//   ownerId?, createdAt? }.
+// Idempotent: retries upsert by ticket_no. If the requested number is already
+// held by a *different* complaint the row is NOT overwritten — a fresh number
+// is allocated and returned, and the caller adopts it as its ticket.
 export async function portalComplaintHandler(req: Request, res: Response) {
   const b = req.body ?? {};
   const ticketNo = String(b.ticketNo ?? b.ticket_no ?? "").trim();
